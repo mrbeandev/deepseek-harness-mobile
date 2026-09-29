@@ -22,7 +22,7 @@ import com.labteto.dshmobile.core.wire.encodeToJsonElement
 
 /**
  * Shapes harness 0.1.7 added to the browser surface, transcribed from the rc.2 sources named on
- * each type (tag `dsh-v0.1.7-rc.2`, `477b4f4`).
+ * each type (tag `dsh-v0.1.7-rc.2`, `477b4f4`). These shapes are unchanged at `dsh-v0.2.0-rc.1`.
  */
 
 // ------------------------------------------------------------------ jobs (`packages/api/job-controller`)

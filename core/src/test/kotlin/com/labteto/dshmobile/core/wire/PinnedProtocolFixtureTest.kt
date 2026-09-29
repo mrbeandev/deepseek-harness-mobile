@@ -8,14 +8,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Shapes transcribed from the pinned harness release (`protocol/477b4f4.json`, tag
- * `dsh-v0.1.7-rc.2`), decoded by the shipped DTOs and fold.
+ * Shapes pinned at tag `dsh-v0.2.0-rc.1` (`protocol/4878cda.json`), unchanged since
+ * `dsh-v0.1.7-rc.2`, decoded by the shipped DTOs and fold.
  *
  * The fixture's commit must equal [DshCore.PROTOCOL_COMMIT], so moving the baseline without
  * re-transcribing the fixture fails here rather than passing on stale shapes.
  */
 class PinnedProtocolFixtureTest {
-    private val fixture = Json.parseToJsonElement(javaClass.getResource("/protocol/477b4f4.json")!!.readText()).jsonObject
+    private val fixture = Json.parseToJsonElement(javaClass.getResource("/protocol/4878cda.json")!!.readText()).jsonObject
 
     private fun events(): List<SessionEventEnvelope> = fixture.getValue("events").jsonArray.map { raw ->
         val e = raw.jsonObject

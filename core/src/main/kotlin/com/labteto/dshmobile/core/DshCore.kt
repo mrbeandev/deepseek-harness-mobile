@@ -20,7 +20,10 @@ object DshCore {
      * 0.1.7 is the third: session format v4 flattened the `tool/result` message, and several
      * endpoints this client read moved onto projections or streams. The client still reads the
      * 0.1.6 shapes wherever it can tell them apart on the wire.
+     *
+     * 0.2.0 moved the baseline without changing anything this client sends or reads. Hosts on
+     * 0.1.7-rc.x and 0.1.6 still work as they did with client 0.12.0.
      */
-    const val PROTOCOL_BASELINE = "0.1.7-rc.2"
-    const val PROTOCOL_COMMIT = "477b4f420553e8a52c2fbccc464d7561b239c443"
+    const val PROTOCOL_BASELINE = "0.2.0-rc.1"
+    const val PROTOCOL_COMMIT = "4878cdabd87d4041bdaff61d04c966883b9fd07a"
 }
