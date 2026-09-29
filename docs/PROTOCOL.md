@@ -4,9 +4,9 @@ What DSH Mobile speaks, in one page. Authoritative shapes live in the harness
 repository — `packages/api/*/src/types.ts`,
 `packages/api/gateway/src/stream-protocol.ts`, `packages/llm/llm/src/assistant-stream.ts`
 and `packages/client/file-upload/src/*` — and this document records the
-subset the app implements, against harness **0.1.7-rc.2** (tag `dsh-v0.1.7-rc.2`,
-`477b4f420553e8a52c2fbccc464d7561b239c443`). Where 0.1.7 changed a shape the app
-still reads the 0.1.6 one too; [0.12.0 contract additions](#0120-contract-additions-harness-017)
+subset the app implements, against harness **0.2.0-rc.1**. Nothing the app uses
+changed from 0.1.7-rc.2. Where 0.1.7 changed a shape the app still reads the
+0.1.6 one too; [0.12.0 contract additions](#0120-contract-additions-harness-017)
 lists both.
 
 ## Envelopes
