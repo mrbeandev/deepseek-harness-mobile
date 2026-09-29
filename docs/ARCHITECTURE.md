@@ -110,4 +110,4 @@ tools/capture/  Node recorder of real harness traffic → conformance fixtures
   sends no render intent.
 - Transient assistant rows never touch the durable cursor, never count as a
   gap, and are never paged; only the settlement is history.
-- Protocol baseline: harness `0.1.7-rc.2` (`core.DshCore.PROTOCOL_BASELINE`).
+- Protocol baseline: harness `0.2.0-rc.1` (`core.DshCore.PROTOCOL_BASELINE`).

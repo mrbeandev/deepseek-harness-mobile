@@ -1,6 +1,6 @@
 {
-  "upstreamCommit": "477b4f420553e8a52c2fbccc464d7561b239c443",
-  "release": "0.1.7-rc.2",
+  "upstreamCommit": "4878cdabd87d4041bdaff61d04c966883b9fd07a",
+  "release": "0.2.0-rc.1",
   "roster": {"presets": [{"id":"standard","isDefault":true,"name":"Standard"},{"id":"ptc","isDefault":false}]},
   "legacyRoster": {"presets": [{"id":"standard","trust":"system","isDefault":true}], "authorable":true,"modeSelectionEnabled":false},
   "permissionCatalog": {"options":[{"value":"read-only","name":"read-only"},{"value":"auto","name":"Auto review"}],"defaultOptions":[{"value":"read-only","name":"read-only"}],"defaultPreset":"read-only"},

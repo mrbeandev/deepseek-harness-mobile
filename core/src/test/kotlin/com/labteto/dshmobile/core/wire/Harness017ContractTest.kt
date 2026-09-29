@@ -9,7 +9,8 @@ import java.io.InputStream
 
 /**
  * Contract examples independently transcribed from the Remote signatures at `dsh-v0.1.7-rc.2`
- * (`477b4f4`), plus the 0.1.6 spellings the client still falls back to.
+ * (`477b4f4`), plus the 0.1.6 spellings the client still falls back to. These shapes are unchanged
+ * at `dsh-v0.2.0-rc.1`.
  */
 class Harness017ContractTest {
     private class Transport : RpcTransport {

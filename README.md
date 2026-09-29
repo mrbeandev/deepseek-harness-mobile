@@ -95,7 +95,7 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 
 - Android 8.0+ (minSdk 26).
 - A running [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-  at `0.1.7-rc.2` for DSH Mobile `0.12.0`; `0.1.6-alpha.x` still works.
+  at `0.2.0-rc.1` for DSH Mobile `0.12.1`; `0.1.7-rc.x` and `0.1.6-alpha.x` still work.
   See [compatibility](docs/COMPATIBILITY.md) and [validation results](docs/VALIDATION-0.11.0.md).
 
 ## Quick start

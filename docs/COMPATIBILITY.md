@@ -1,317 +1,89 @@
 # Compatibility
 
-DSH Mobile speaks the DeepSeek Harness **web client protocol** (the JSON-RPC
-surface the harness GUI itself consumes over `/api`). That protocol is internal
-to the harness and is not versioned on the wire, so this app pins a protocol
-baseline: the harness release its DTOs and call shapes were ported from and
-checked against.
+DSH Mobile speaks the DeepSeek Harness web-client protocol over `/api`. The protocol is not versioned on the wire, so the app pins the harness release its call shapes were checked against. `DshCore.PROTOCOL_BASELINE` is shown in Settings → About.
 
-| DSH Mobile | Harness version | Status |
+## Harness
+
+| DSH Mobile | Harness | Notes |
 |---|---|---|
-| 0.12.0 | 0.1.7-rc.2 (tag `dsh-v0.1.7-rc.2`, `477b4f420553e8a52c2fbccc464d7561b239c443`); still reads 0.1.6-alpha.x | Current target. See [What 0.1.7 changed](#what-017-changed) |
-| 0.11.6 – 0.11.7 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`; also checked against `0.1.6-alpha.2` | Against 0.1.7: every tool card loses its result, the preset roster fails to decode, the subagent sheet and Jobs card stay empty, image and PDF previews fail, and archiving a running session silently does nothing |
-| 0.11.5 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720`; also checked against `0.1.6-alpha.2` | First release whose wire surface is checked against a *running* harness rather than against a description of one — see [Automated conformance](#automated-conformance) |
-| 0.11.4 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720` | The queue dock is empty against a harness at or past the commit that removed `session/control`'s `queues` map; PTC dispatch metadata renders as raw rows in the transcript |
-| 0.11.3 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720` | Every answered, dismissed or skipped question card sticks: the host never tells the answering client its request resolved, and the card waited for that frame |
-| 0.11.1 – 0.11.2 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720` | Question answers and approvals are refused by any harness ≥ 0.1.2: `$events/result` was posted without its `args` wrapper |
-| 0.11.0 | 0.1.6-alpha.1 + master `0d1f50007f9bca3f52b06e1c3074fa14d5fb0720` | See [validation](VALIDATION-0.11.0.md) |
-| 0.10.1 | 0.1.3-alpha.1 | Previous baseline |
-| 0.10.0 | 0.1.3-alpha.1 | |
-| 0.9.3 | 0.1.2-alpha.1 | Previous baseline — no streaming on 0.1.3, commands refused |
-| 0.9.2 | 0.1.2-alpha.1 | Cannot send messages |
-| 0.9.1 | 0.1.2-alpha.1 | Cannot send messages |
-| 0.9.0 | 0.1.2-alpha.1 | Cannot send messages |
-| 0.8.0 | 0.1.1-rc.2 | |
-| 0.7.0 | 0.1.1-rc.2 | |
-| 0.6.0 | 0.1.1-rc.2 | |
+| 0.12.1 | 0.2.0-rc.1 | Current. Nothing this client uses changed since 0.1.7-rc.2; 0.1.7-rc.x and 0.1.6-alpha.x hosts still work |
+| 0.12.0 | 0.1.7-rc.2 | Still reads 0.1.6-alpha.x |
+| 0.11.5 – 0.11.7 | 0.1.6-alpha.2 | Against 0.1.7, tool cards lose their results and presets, subagents, jobs, previews and archiving fail |
+| 0.11.4 | 0.1.6-alpha.1 | Empty queue dock on later master; PTC dispatch rows in the transcript |
+| 0.11.3 | 0.1.6-alpha.1 | Answered question cards stick |
+| 0.11.1 – 0.11.2 | 0.1.6-alpha.1 | Answers and approvals refused by any harness ≥ 0.1.2 |
+| 0.11.0 | 0.1.6-alpha.1 | See [validation](VALIDATION-0.11.0.md) |
+| 0.10.0 – 0.10.1 | 0.1.3-alpha.1 | |
+| 0.9.3 | 0.1.2-alpha.1 | No streaming on 0.1.3; commands refused |
+| 0.9.0 – 0.9.2 | 0.1.2-alpha.1 | Cannot send messages |
+| 0.6.0 – 0.8.0 | 0.1.1-rc.2 | |
 | 0.5.0 | 0.1.0-rc.8 | |
 | 0.4.0 | 0.1.0-rc.7 | |
 | 0.1.0 – 0.3.1 | 0.1.0-rc.5 | |
 
-**0.10.0 and 0.9.x do not interchange.** A 0.9.x app connects to a 0.1.3
-harness and reads history, but it never sees a reply being written — session
-format v2 logs no per-token events and the app does not ask for the live
-stream that replaced them — and every slash command is refused, because the
-argument that carries attachments was renamed. A 0.10.0 app against a 0.1.2
-harness is the mirror image: it asks `session/follow` for a stream 0.1.2 does
-not know and sends `commands/execute` an argument 0.1.2 does not declare.
-Upgrade both, or neither.
+0.11.x was built against master just past 0.1.6-alpha.1.
 
-**0.9.0 does not speak the 0.1.1 protocol** either; that break was at the
-handshake rather than partway through a session (see 0.9.0 in the changelog).
-
-## Current-master scope
-
-From 0.12.0 the target is a tagged release again (`dsh-v0.1.7-rc.2`), so the tag and the
-commit name the same thing. 0.11.x targeted 0.1.6-alpha.1 plus master at the commit above,
-inspected on September 15, 2026. 0.12.0 keeps reading the 0.1.6 shapes where it can tell
-them apart on the wire, but its conformance runs are against rc.2. Optional endpoints may be unavailable in a
-particular host composition; failures remain visible and unknown event payloads remain
-inspectable. Host-owned model adapters, SSH, MCP, Browser/Computer Use, subprocesses and
-session-log migrations remain in the harness.
+- Do not interchange 0.10 and 0.9 on harness 0.1.3 and 0.1.2: live replies and command arguments changed. Upgrade both app and harness, or neither.
+- 0.9.0 cannot speak the 0.1.1 protocol; the handshake fails.
 
 ## Relay
 
-Reaching a harness through [`dsh-relay`](https://github.com/sorsama/deepseek-harness-relay)
-is a separate contract with its own version, because the relay is a plugin
-mounted beside the harness rather than part of it.
+[`dsh-relay`](https://github.com/sorsama/deepseek-harness-relay) is a separate versioned contract.
 
-| DSH Mobile | [dsh-relay](https://github.com/sorsama/deepseek-harness-relay) | Notes |
+| DSH Mobile | dsh-relay | Notes |
 |---|---|---|
-| 0.11.5 – 0.12.0 | 0.2.1 | As 0.11.4. From 0.12.0 `workspaceFiles/readBytes` answers as multipart/form-data, which the relay passes through as it does any body |
-| 0.11.0 – 0.11.4 | 0.2.1 | As 0.10.x. From 0.11.2 the `Host` header brackets an IPv6 literal, without which the relay's fence refuses every `/api` call as `unparsable-host` |
-| 0.10.0 – 0.10.1 | 0.2.1 | Pairing payload `v: 1`; mDNS TXT `v: 1`. File uploads need the relay to proxy `/api/session/uploadFileBinary`, or the app falls back to the `fileUploads/upload` Remote |
-| 0.9.2 – 0.9.3 | 0.2.1 | |
-| 0.9.1 | 0.2.1 | |
+| 0.11.0 – 0.12.1 | 0.2.1 | From 0.11.2 the `Host` header brackets an IPv6 literal; from 0.12.0 `readBytes` answers as multipart, which the relay passes through |
+| 0.10.0 – 0.10.1 | 0.2.1 | Pairing payload and mDNS TXT `v: 1` |
+| 0.9.1 – 0.9.3 | 0.2.1 | |
 | 0.9.0 | 0.2.0 | |
 | 0.8.0 | 0.1.1 | |
 
-A relay older than 0.2.0 cannot serve a 0.1.2 or later harness at all. The
-harness authenticates its whole `/api` surface against a browser-session
-cookie, and the relay deliberately strips the client's `Cookie` header before
-forwarding — so every proxied request is answered 401 until the relay supplies
-a harness session of its own. That is a relay change, not an app one.
+A relay older than 0.2.0 cannot serve harness ≥ 0.1.2: every proxied call returns 401 without the relay's own harness session. The `dsh-relay` 0.2.1 npm package is a [stale build](https://github.com/sorsama/deepseek-harness-relay/pull/6) that also answers 401; install from source with `dsh plugin --profile web add github:sorsama/deepseek-harness-relay#v0.2.1`. The app reports that 401 as the harness refusing the relay.
 
-A relay build that lacks the session signing fails the same way whatever its
-version says. **`dsh-relay` 0.2.1 as published to npm is one**: the tarball was
-packed from a stale build, so pairing succeeds and every proxied call — both mux
-upgrades included — comes back 401
-([deepseek-harness-relay#6](https://github.com/sorsama/deepseek-harness-relay/pull/6)).
-Install it from source instead,
-`dsh plugin --profile web add github:sorsama/deepseek-harness-relay#v0.2.1`, or
-any later release that carries the fix. The app reports this as the harness
-refusing the relay, not as a pairing problem (see `docs/PROTOCOL.md`).
+Pairing `kind` and `v` are checked and refused, rather than degraded; see [protocol notes](PROTOCOL.md).
 
-Both versions are checked, unlike the harness baseline. A pairing payload is a
-credential exchange, so a `kind` other than `dsh-relay-pair` or a `v` above the
-one this build understands is refused outright rather than degraded — see
-`docs/PROTOCOL.md`. Everything *behind* the relay is the harness protocol
-unchanged, so the version policy below applies to it exactly as before.
+## Conformance
 
-The baseline is one constant — `DshCore.PROTOCOL_BASELINE` in
-`core/src/main/kotlin/com/labteto/dshmobile/core/DshCore.kt` — and the app shows
-it in Settings → About next to its own version.
-
-## Automated conformance
-
-From 0.11.5 there is a `:conformance` module that boots a real harness from a checkout, exchanges a
-launch token for a browser session, and drives the shipped client against it. It is opt-in — it
-skips unless `DSH_HARNESS_SRC` names a built checkout — so ordinary CI is unchanged:
+The opt-in suite skips without a built harness checkout:
 
 ```sh
 DSH_HARNESS_SRC=/path/to/deepseek-harness ./gradlew :conformance:test
 ```
 
-What it establishes today, against `0.1.7-rc.2` (and, before 0.12.0, against `0.1.6-alpha.2`):
+Against 0.2.0-rc.1 it checks:
 
-- the launch-token exchange really does buy a session, and that session really does open `/api` —
-  a tier `mock-harness` cannot model, because it implements no `GET /?token=` at all;
-- an unauthenticated call is a 401 and reads as a missing session, not as a broken connection;
-- `$events` opens with a `ready` frame carrying a usable `clientId` and host home;
-- **every endpoint this client calls is understood by the harness** — the gateway matches args
-  against the host method's own parameter names, exactly, so a rename or a moved shape is a refusal
-  the test sees immediately;
-- work waiting behind a busy agent reaches the queue dock through the `inbox` projection;
-- the streams the app opens beyond `$events` and `session/control` (`job/list`, `job/follow`,
-  per-file `workspaceFiles/changes`, `workspace/follow`) accept its arguments;
-- a file read through `workspaceFiles/readBytes` comes back byte for byte through the multipart
-  answer, as a whole file, a window, and relative to another file;
-- a real tool-calling turn (the harness's own mock model, no key) folds to a tool call and a
-  result that pair, which is the session format v4 check.
+- launch-token exchange and browser session, plus unauthenticated 401 handling;
+- the `$events` ready frame and every endpoint's argument names;
+- the inbox queue and the extra streams beyond `$events` and `session/control`;
+- multipart `readBytes` answers byte for byte;
+- a real tool-calling turn whose call and result pair.
 
-Checks against rc.2 need the mock model to speak the Messages API, which rc.2's mock does; the
-suite stops writing `llm-deepseek: {protocol: chat-completions}` when the checkout's adapter
-refuses that setting.
-
-What it does not yet cover, and what the older caveats still apply to: live assistant streaming,
-tool approvals, question answering against the real acceptance law, attachments, and message
-feedback on a freshly generated reply. The machinery for all of them is in place — the harness's
-own scriptable model server drives a real turn without a paid key — so these are additions rather
-than open questions about feasibility.
+It does not yet cover live streaming, approvals, question answering, attachments or feedback.
 
 ## Version policy
 
-The baseline says what was tested. It is not a gate, and the app does not warn
-when it reaches a harness built from a different commit — it could not say what
-would break if it did. The harness releases far more often than this client.
+- The app degrades on shape: unknown events and content pass through, while a 404 hides an unavailable control.
+- There is no version-shaped branch. Harness 0.1.2 removed `host.describe`, so nothing on the wire says which version is running.
+- Each harness release is re-checked with `tools/capture` and `:conformance` before moving the baseline.
 
-Through 0.1.1 the app could at least *read* the harness's version, from
-`host.describe`. It cannot any more: 0.1.2 removed that call and publishes no
-version anywhere on the wire. So the connect list, the details panel and
-Settings → Harness show the host's home directory — the one host fact the
-`ready` frame still carries — and About shows this client's own pinned
-baseline, which is a statement about the app rather than about the harness it
-is talking to.
+## Breaking changes by harness release
 
-What the app does:
+See [protocol notes](PROTOCOL.md) for the shapes.
 
-- **Degrades on shape, not on version.** Unknown event types, stream frame
-  kinds, tool cards and content blocks fall back to passthroughs rather than
-  failing, and unknown keys are ignored. A build that composes no such capability
-  answers 404, which the client reads as "this build does not offer that" and
-  hides the control instead of reporting a failure.
-- **Has no version-shaped branch.** There used to be exactly one: through
-  0.1.1, `commands/execute` took a required `images` argument only from
-  0.1.0-rc.8, and the client chose its shape from a field only rc.8 emitted.
-  0.1.2 deleted that signal, and 0.1.3 renamed the argument again — this time
-  the client simply moved with it, because a 0.1.3 host refuses the old key
-  and a 0.1.2 host refuses the new one, and there is nothing on the wire to
-  choose by.
-- **Re-checks on each harness release** with the fixture capture tool
-  (`tools/capture`), and moves the baseline once the shapes have been verified.
+### 0.2.0
 
-## What 0.1.7 changed
+Nothing this client uses changed. The new `productAnalytics` Remote is Desktop-only and unused here; scheduler failures now record synthetic error tool results (`ToolOutcomeUnknownError` or `ToolNotStartedError`), which the app folds like other error results.
 
-Session format v4, plus several endpoints moved onto projections and streams.
-`docs/PROTOCOL.md` has the shapes under "0.12.0 contract additions"; this is the summary.
+### 0.1.7
 
-- **Tool results are tool-role messages.** The call id and error flag moved off the
-  `tool-result` wrapper and onto the message. A client that reads the wrapper pairs no result
-  with its call, which is what 0.11.x does against 0.1.7.
-- **A new durable event, `developer/message`,** records the agent's tool set changing.
-- **Subagents** come from the parent's `subagentCatalog` projection; `subagents/list` is gone.
-- **Jobs** moved off `session/control` onto `job/list`, with `job/follow` and `job/kill`
-  beside it.
-- **Binary file reads** are one call, `workspaceFiles/readBytes` with `options`, answered as
-  multipart/form-data; `readAll` and `readRelated` are gone, and the file watch names a path.
-- **Archiving** a session with running work is refused unless the request asks to stop it.
-- **Pins**, a localized approval reason, and a smaller preset roster (no `authorable`, no
-  `trust`, no authoring calls).
-- **The DeepSeek adapter** speaks only the Messages API and refuses a `protocol` setting; this
-  affects the conformance harness, not the app.
+Session format v4 moved tool-result call ids and error flags onto the message. Subagents moved from `subagents/list` to the `subagentCatalog` projection, jobs from `session/control` to `job/list`, and `readAll`/`readRelated` into multipart `readBytes`. Archiving a busy session is refused unless the request asks to stop its work. The app also reads the older 0.1.6 shapes.
 
-0.12.0 reads both generations: the fold accepts v3 and v4 tool results, the jobs card listens to
-both sources, the subagent sheet falls back to `subagents/list`, and file reads repeat the 0.1.6
-call when the host refuses `options`. None of it depends on a version string.
+### 0.1.3
 
-## What 0.1.3 changed
+Session format v2 removed durable assistant deltas and made the live assistant stream opt-in. Error codes became namespaced, commands take `submittedAttachments`, and file uploads were added.
 
-Session format v2, plus generic file uploads. `docs/PROTOCOL.md` carries the
-shapes; this is the summary.
+### 0.1.2
 
-- **No durable deltas.** `assistant/chunk` is gone from the log. Each model
-  attempt settles as one event — an `assistant/message` when it produced a
-  surface message, a new log-only `assistant/attempt` when it did not — and the
-  settlement embeds the exact compact stream the attempt produced. A 0.1.3 host
-  no longer sends the packed `chunks` history record 0.1.2 introduced, because
-  there is nothing left to pack; the app still reads that record when a 0.1.2
-  host sends one, since misreading it opens a sequence gap.
-- **Streaming is opt-in and process-local.** A `session/follow` request that
-  sets `assistantStream: true` receives `assistant-stream` frames (`start`,
-  `chunk`, `end`) beside the durable events, and its opening snapshot carries an
-  `assistantStream` baseline describing any attempt caught mid-stream. These
-  frames are presentation, never replayed and never paged; the app folds them
-  into a provisional message that the settlement replaces.
-- **Every business error code is namespaced.** `attachment-error` became
-  `session/attachment-invalid`, `agent-busy` became `session/agent-busy`,
-  `session-not-found` became `session/not-found`, and the gateway's own
-  refusals — which used to arrive as a bare `internal` — carry codes of their
-  own: `gateway/arguments-invalid`, `gateway/input-invalid` (the boundary
-  validation of a `request` object), `gateway/bad-request`, `gateway/internal`.
-- **Commands carry attachments, not images.** The third argument of
-  `commands/execute` is `submittedAttachments`, each member tagged
-  `{type: "image", …}` or `{type: "file", receiptId}`, and a descriptor
-  declares `input.attachments` where it declared `input.images`.
-- **Files.** Any file can be staged for a session, either by streaming its
-  bytes to `POST /api/session/uploadFileBinary` or through the
-  `fileUploads/upload` Remote, and cited from a prompt or a command by the
-  receipt the upload answered with. A stored file appears in the log as a
-  `file` content block carrying its name, size and digest.
-- **Subagent prompts take prompt parts.** `subagents/prompt` `content` is the
-  same `PromptContentPart` vocabulary `session/prompt` takes, so a follow-up to
-  a child may carry images (files are refused for a child).
-- **The mux heartbeat has a deadline.** The host terminates a socket that
-  misses two pings; the platform answers pongs, so nothing changes here.
+`/api` moved to `namespace/method` and one `/api/remote.mux` socket. The `$events` ready frame replaced `host.describe`; answers use `$events/result` with `args`, and history uses `session/follow` plus `session/page`.
 
-## What 0.1.2 changed
-
-The whole `/api` surface moved. `packages/host/apiproxy` was deleted upstream
-and every operation now belongs to the business service that owns it, so this is
-a summary rather than an exhaustive list.
-
-- **Method names.** `domain.method` became `namespace/method`
-  (`session.list` → `session/list`). Several calls that took a request object now
-  take flat named arguments, because the gateway matches an args object against
-  the host method's *parameter names*.
-- **Prompts carry an identity.** `session/prompt` and `subagents/prompt` gained a
-  required `requestId`, minted by the sender, one per human message; the host
-  persists it on the message the prompt is accepted as.
-- **One socket.** `/api/events.mux` and `/api/events.host` were replaced by
-  `/api/remote.mux`, which multiplexes independently cancellable logical
-  streams and, unlike its predecessors, is written to as well as read.
-- **Readiness.** `host.describe` is gone. A connection is ready when the
-  Gateway-internal `$events` stream yields its opening `ready` frame.
-- **Answers.** `/api/respond` is gone. Approvals and questions arrive as
-  agent-scoped waterfalls on `$events` and are answered through
-  `$events/result`, bound to the generation by its `clientId`. That endpoint is
-  an ordinary Remote, so the answer rides in the usual `args` object like every
-  other unary — a bare payload is refused. The answering client is told nothing
-  further: the host drops its delivery before cancelling the rest, so a receipt
-  is the only sign that card is done.
-- **History is a stream.** `session.history` became `session/follow` (a stream
-  opening with a complete snapshot) plus `session/page` (a unary read that
-  *requires* the follow generation's cursor).
-- **Tool cards are the client's.** The host no longer computes render intents;
-  terminal, diff, read, search and web cards are derived in the app from the raw
-  call, result and durable `meta`.
-- **Authentication.** See below.
-
-## Authentication
-
-Since harness 0.1.2 the complete `/api` surface — every call, the mux upgrade,
-the session-log download and, since 0.1.3, the file-upload route — is
-authenticated against a signed browser-session cookie. The harness prints a
-launch token once per process; `GET /?token=…` exchanges it for a host-only,
-`HttpOnly`, `SameSite=Strict` cookie. The token is rejected on `/api` paths and
-in an `Authorization` header, so the index route is the only exchange point.
-
-A request that clears the `Host`/`Origin` checks but carries no session is
-answered **401**, which is a different fact from the **403** those checks
-produce, and the app reports them separately: a 403 is about where the request
-came from and is fixed on the harness, a 401 is about who is asking and is fixed
-by exchanging a token.
-
-Behind a relay this is the relay's business — it holds the harness session and
-injects it upstream, and the phone never carries the host's cookie across the
-network.
-
-## Loopback-only surfaces
-
-There are none any more.
-
-Through 0.1.1 the harness kept a `PRIVILEGED_METHODS` list — `settings.*`,
-`credentials.*`, `llm.discoverModels`, `host.pickDirectory`, `host.openPath`,
-and agent-preset authoring — that it refused to non-loopback callers with 403,
-and this app presented those surfaces read-only or hidden. 0.1.2 **deleted that
-list**. There is one uniform authenticated tier: possession of a browser session
-authorizes the complete tool-capable API, which is the same authority the web
-app has after creating a session.
-
-This is a real change in posture, not an editorial one. A paired device now
-reaches settings and credentials where it previously got a refusal.
-
-Nothing in the app branches on it — these surfaces already degraded on 403 and
-404 rather than on a stored flag, so a paired device simply starts getting
-answers. What decides who reaches them is now entirely the relay's
-`privilegedMethods` policy, which is the relay's own rule rather than a mirror
-of the harness's.
-
-## Known differences by harness release
-
-- **Image bounds are the host's.** 0.1.1-rc.2 raised the shipped admission caps
-  (per-image 3.5MB → 20MB, per-message 100MB → 200MB, 40M → 64M pixels,
-  2000px → 8192px per side). The app enforces whatever the `imageLimits`
-  projection says and falls back to those defaults when a host publishes none.
-- **Stored images are normalized on ingest.** The attachment reference describes
-  the re-encoded stored image: its `mediaType` can differ from the upload's,
-  `attachmentId` is the digest of the normalized bytes, animated GIFs flatten to
-  one frame, and `originalDimensions` reports the upload's pixel size when
-  scaling occurred. The client treats the reference as opaque.
-- **Stored files are verbatim.** A file is kept byte for byte with no
-  normalization, and its `attachmentId` is the sha256 of exactly those bytes.
-  The app renders a file as a chip — name and size — and never downloads it;
-  the bytes are for the agent's file tools.
-- **Live and replayed transcripts differ in encoding, not content.** A reply
-  arrives as `assistant-stream` frames while it is written and as one
-  settlement event on reconnect or page; the fold shows the same message either
-  way, and a reconnect mid-answer restores the partial text from the baseline.
+Every `/api` call needs a browser-session cookie obtained by exchanging the launch token at `GET /?token=`. A missing session returns 401, while a refused `Host`/`Origin` returns 403; behind a relay, the relay holds the harness session. The loopback-only `PRIVILEGED_METHODS` list was deleted, so a paired device can reach settings and credentials according to the relay's `privilegedMethods` policy.

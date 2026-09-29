@@ -3,6 +3,22 @@
 All notable changes to DSH Mobile are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); the project uses SemVer.
 
+## [0.12.1] - 2026-09-29
+
+Moves the protocol baseline to DeepSeek Harness 0.2.0-rc.1. Nothing the app sends or reads
+changed between 0.1.7-rc.2 and 0.2.0-rc.1, so this release changes no behaviour, and
+0.1.7-rc.x and 0.1.6 hosts keep working.
+
+### Changed
+
+- The protocol baseline in Settings → About reads 0.2.0-rc.1.
+- `docs/COMPATIBILITY.md` is shorter and names harness releases by label only.
+
+### Internal
+
+- The pinned protocol fixture is re-checked against 0.2.0-rc.1 and renamed to its commit
+  (`4878cda`). The conformance suite runs against 0.2.0-rc.1.
+
 ## [0.12.0] - 2026-09-25
 
 Moves the protocol baseline to DeepSeek Harness 0.1.7-rc.2. A 0.1.6 harness still works: where
