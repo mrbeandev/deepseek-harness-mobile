@@ -3,6 +3,8 @@ package com.labteto.dshmobile.core.wire.dto
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 
 /**
  * Sessions-domain DTOs, ported from `packages/api/session-controller/src/types.ts`,
@@ -32,7 +34,15 @@ data class SessionSummary(
     @SerialName("agentPreset") val agentPreset: String? = null,
     /** Projection baseline for this row; absent when no value is available. */
     @SerialName("projections") val projections: SessionProjectionsBlock? = null,
-)
+) {
+    /**
+     * Effective agent preset: the top-level field when the host sends one, else
+     * `projections.values.agentPreset` — which is where the harness actually publishes it (its
+     * `SessionSummary` wire shape has no top-level field). Mirrors the title's projection read.
+     */
+    val agentPresetEffective: String?
+        get() = agentPreset ?: (projections?.values?.get("agentPreset") as? JsonPrimitive)?.contentOrNull
+}
 
 /** The projection baseline block riding history tail pages and list rows. */
 @Serializable
