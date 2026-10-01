@@ -497,6 +497,9 @@ class SessionStore @Inject constructor(
     private val sessionRows = LinkedHashMap<String, SessionRow>()
     private val runningBySession = HashMap<String, Boolean>()
     private val titleBySession = HashMap<String, String>()
+
+    /** The newest agent preset seen per session, from either the list or the control stream. */
+    private val presetBySession = HashMap<String, AgentPresetState>()
     private val workspaceRows = LinkedHashMap<String, WorkspaceRow>()
     private val workspaceOrder = ArrayList<String>()
     private var archived = emptySet<String>()
@@ -872,8 +875,9 @@ class SessionStore @Inject constructor(
                 synchronized(lock) {
                     var changed = false
                     frame.value.projections.forEach { (sessionId, block) ->
+                        val asOf = block["asOfSeq"]?.jsonPrimitive?.intOrNull ?: 0
                         val value = (block["values"] as? JsonObject)?.get(AGENT_PRESET_PROJECTION)
-                        if (foldAgentPresetLocked(sessionId, value)) changed = true
+                        if (foldAgentPresetLocked(sessionId, asOf, value)) changed = true
                     }
                     if (changed) emitSessionsLocked()
                 }
@@ -894,7 +898,9 @@ class SessionStore @Inject constructor(
                 synchronized(lock) {
                     // Another client (the web GUI) can pick a preset after our list read, and the
                     // list row is what the top-bar chip and the details pill draw from.
-                    if (frame.key == AGENT_PRESET_PROJECTION && foldAgentPresetLocked(frame.sessionId, frame.value)) {
+                    if (frame.key == AGENT_PRESET_PROJECTION &&
+                        foldAgentPresetLocked(frame.sessionId, frame.seq, frame.value)
+                    ) {
                         emitSessionsLocked()
                     }
                     if (frame.sessionId == currentId) {
@@ -908,16 +914,30 @@ class SessionStore @Inject constructor(
     }
 
     /**
-     * Fold one `agentPreset` projection value into a known session row. Returns whether the row
-     * changed; the caller publishes. A session this store has no row for is left for the next list
-     * read rather than invented here.
+     * Fold one `agentPreset` projection value seen at [seq] into the session's row. Returns whether
+     * the row changed; the caller publishes. A session with no row yet keeps the value for the
+     * list read that brings its row, rather than having a row invented here.
      */
-    private fun foldAgentPresetLocked(sessionId: String, value: JsonElement?): Boolean {
+    private fun foldAgentPresetLocked(sessionId: String, seq: Int, value: JsonElement?): Boolean {
+        val incoming = agentPresetUpdate(seq, value) ?: return false
+        val kept = newerAgentPreset(presetBySession[sessionId], incoming)
+        presetBySession[sessionId] = kept
         val row = sessionRows[sessionId] ?: return false
-        val preset = agentPresetFromProjection(row.agentPreset, value)
-        if (preset == row.agentPreset) return false
-        sessionRows[sessionId] = row.copy(agentPreset = preset)
+        if (row.agentPreset == kept.preset) return false
+        sessionRows[sessionId] = row.copy(agentPreset = kept.preset)
         return true
+    }
+
+    /**
+     * The preset a list row should show: its own, unless the control stream already delivered one
+     * from a later position in the session's log. A row without a projection block has no position
+     * and yields to anything already seen.
+     */
+    private fun listedAgentPresetLocked(item: SessionSummary): String? {
+        val incoming = AgentPresetState(item.projections?.asOfSeq ?: -1, item.agentPresetEffective)
+        val kept = newerAgentPreset(presetBySession[item.sessionId], incoming)
+        presetBySession[item.sessionId] = kept
+        return kept.preset
     }
 
     /**
@@ -1107,13 +1127,14 @@ class SessionStore @Inject constructor(
         synchronized(lock) {
             val existing = sessionRows[item.sessionId]
             val title = titleBySession[item.sessionId]
+            val preset = listedAgentPresetLocked(item)
             val row = existing?.copy(
                 title = title ?: existing.title,
                 blank = item.blank,
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPresetEffective,
+                agentPreset = preset,
             ) ?: SessionRow(
                 sessionId = item.sessionId,
                 title = title,
@@ -1122,7 +1143,7 @@ class SessionStore @Inject constructor(
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPresetEffective,
+                agentPreset = preset,
                 updatedAt = item.updatedAt,
                 pendingInteraction = null,
             )
@@ -1145,6 +1166,7 @@ class SessionStore @Inject constructor(
             sessionRows.remove(sessionId)
             pendingKinds.remove(sessionId)
             runningBySession.remove(sessionId)
+            presetBySession.remove(sessionId)
             questionEvents.discard(sessionId)
             emitSessionsLocked()
         }
@@ -1368,7 +1390,7 @@ class SessionStore @Inject constructor(
                             parentSessionId = item.parentSessionId,
                             origin = item.origin,
                             cwd = item.cwd,
-                            agentPreset = item.agentPresetEffective,
+                            agentPreset = listedAgentPresetLocked(item),
                             updatedAt = item.updatedAt,
                             pendingInteraction = null,
                         )

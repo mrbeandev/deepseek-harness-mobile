@@ -9,40 +9,64 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
- * Rows retain their last known preset until the control stream supplies a valid replacement.
- * Missing baseline keys must not behave like JSON null, which intentionally clears the chip.
+ * Rows keep their last known preset until the control stream or a list read supplies a newer one.
+ * A missing baseline key must not behave like JSON null, which intentionally clears the chip, and
+ * an answer that reflects an older log position must not undo a live update.
  */
 class AgentPresetProjectionTest {
 
     @Test
-    fun `a string sets or replaces the preset`() {
-        assertEquals("reviewer", agentPresetFromProjection(null, JsonPrimitive("reviewer")))
-        assertEquals("reviewer", agentPresetFromProjection("coder", JsonPrimitive("reviewer")))
+    fun `a string is a preset`() {
+        assertEquals(AgentPresetState(4, "reviewer"), agentPresetUpdate(4, JsonPrimitive("reviewer")))
     }
 
     @Test
     fun `JSON null clears the preset`() {
-        assertNull(agentPresetFromProjection("coder", JsonNull))
-        assertNull(agentPresetFromProjection(null, JsonNull))
+        assertEquals(AgentPresetState(4, null), agentPresetUpdate(4, JsonNull))
     }
 
     @Test
-    fun `an absent key leaves the preset unchanged`() {
-        assertEquals("coder", agentPresetFromProjection("coder", null))
-        assertNull(agentPresetFromProjection(null, null))
+    fun `an absent key is no news`() {
+        assertNull(agentPresetUpdate(4, null))
     }
 
     @Test
-    fun `non-string payloads read as absent`() {
+    fun `non-string payloads are no news`() {
         val payloads = listOf(
             JsonObject(mapOf("name" to JsonPrimitive("reviewer"))),
             JsonArray(listOf(JsonPrimitive("reviewer"))),
             JsonPrimitive(42),
             JsonPrimitive(true),
         )
-        payloads.forEach { value ->
-            assertEquals("coder", agentPresetFromProjection("coder", value))
-            assertNull(agentPresetFromProjection(null, value))
-        }
+        payloads.forEach { value -> assertNull(agentPresetUpdate(4, value)) }
+    }
+
+    @Test
+    fun `the first state seen is kept`() {
+        val incoming = AgentPresetState(2, "standard")
+        assertEquals(incoming, newerAgentPreset(null, incoming))
+    }
+
+    @Test
+    fun `a later position replaces the held preset`() {
+        val held = AgentPresetState(2, "standard")
+        val incoming = AgentPresetState(5, "minimal")
+        assertEquals(incoming, newerAgentPreset(held, incoming))
+    }
+
+    @Test
+    fun `a list answer from before a live selection does not undo it`() {
+        // The control frame for the selection at seq 5 lands first; the list read that was built at
+        // seq 3 arrives after it and still says "standard".
+        val live = AgentPresetState(5, "minimal")
+        val staleList = AgentPresetState(3, "standard")
+        assertEquals(live, newerAgentPreset(live, staleList))
+    }
+
+    @Test
+    fun `the same position goes to the incoming state`() {
+        val held = AgentPresetState(5, "minimal")
+        val incoming = AgentPresetState(5, null)
+        assertEquals(incoming, newerAgentPreset(held, incoming))
     }
 }
