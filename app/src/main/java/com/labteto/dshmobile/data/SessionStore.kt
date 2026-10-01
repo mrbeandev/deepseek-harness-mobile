@@ -633,6 +633,10 @@ class SessionStore @Inject constructor(
     private fun startHostStreams() {
         val mux = connectionManager.generation?.mux ?: return
         controlJob?.cancel()
+        // Preset watermarks are log positions as this host reported them. A harness restored from
+        // an older snapshot can hand back the same session ids at lower positions, so the new
+        // stream's baseline and the list read that follows start them over.
+        synchronized(lock) { presetBySession.clear() }
         controlJob = scope.launch {
             runCatching {
                 mux.openStream("session/control").collect { item ->
