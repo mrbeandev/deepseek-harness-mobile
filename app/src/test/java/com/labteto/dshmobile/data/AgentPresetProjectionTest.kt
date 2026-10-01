@@ -69,4 +69,40 @@ class AgentPresetProjectionTest {
         val incoming = AgentPresetState(5, null)
         assertEquals(incoming, newerAgentPreset(held, incoming))
     }
+
+    @Test
+    fun `a list row reads its preset from the projection`() {
+        assertEquals(
+            AgentPresetState(3, "standard"),
+            listedAgentPreset(held = null, asOfSeq = 3, topLevel = null, projected = JsonPrimitive("standard")),
+        )
+    }
+
+    @Test
+    fun `a list row whose projection omits the preset keeps what the stream delivered`() {
+        val live = AgentPresetState(5, "minimal")
+        assertEquals(live, listedAgentPreset(held = live, asOfSeq = 9, topLevel = null, projected = null))
+        assertEquals(
+            live,
+            listedAgentPreset(held = live, asOfSeq = 9, topLevel = null, projected = JsonObject(emptyMap())),
+        )
+        assertNull(listedAgentPreset(held = null, asOfSeq = 9, topLevel = null, projected = null))
+    }
+
+    @Test
+    fun `a later list row with JSON null clears the preset`() {
+        val live = AgentPresetState(5, "minimal")
+        assertEquals(
+            AgentPresetState(9, null),
+            listedAgentPreset(held = live, asOfSeq = 9, topLevel = null, projected = JsonNull),
+        )
+    }
+
+    @Test
+    fun `a top-level preset on the list row wins over the projection`() {
+        assertEquals(
+            AgentPresetState(3, "standard"),
+            listedAgentPreset(held = null, asOfSeq = 3, topLevel = "standard", projected = JsonPrimitive("minimal")),
+        )
+    }
 }

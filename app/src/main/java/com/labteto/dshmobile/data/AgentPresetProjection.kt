@@ -28,3 +28,21 @@ internal fun agentPresetUpdate(asOfSeq: Int, value: JsonElement?): AgentPresetSt
  */
 internal fun newerAgentPreset(held: AgentPresetState?, incoming: AgentPresetState): AgentPresetState =
     if (held == null || incoming.asOfSeq >= held.asOfSeq) incoming else held
+
+/**
+ * The state a `session/list` row at [asOfSeq] leaves behind, or null when there is still none.
+ *
+ * A top-level preset wins over the projection, as in `SessionSummary.agentPresetEffective`; no
+ * harness sends one today. A projection that omits the key or carries a malformed value is no
+ * news, exactly as on the control stream, so an unrelated list refresh cannot clear a preset the
+ * stream delivered.
+ */
+internal fun listedAgentPreset(
+    held: AgentPresetState?,
+    asOfSeq: Int,
+    topLevel: String?,
+    projected: JsonElement?,
+): AgentPresetState? {
+    val incoming = topLevel?.let { AgentPresetState(asOfSeq, it) } ?: agentPresetUpdate(asOfSeq, projected)
+    return if (incoming == null) held else newerAgentPreset(held, incoming)
+}

@@ -934,8 +934,12 @@ class SessionStore @Inject constructor(
      * and yields to anything already seen.
      */
     private fun listedAgentPresetLocked(item: SessionSummary): String? {
-        val incoming = AgentPresetState(item.projections?.asOfSeq ?: -1, item.agentPresetEffective)
-        val kept = newerAgentPreset(presetBySession[item.sessionId], incoming)
+        val kept = listedAgentPreset(
+            held = presetBySession[item.sessionId],
+            asOfSeq = item.projections?.asOfSeq ?: -1,
+            topLevel = item.agentPreset,
+            projected = item.projections?.values?.get(AGENT_PRESET_PROJECTION),
+        ) ?: return null
         presetBySession[item.sessionId] = kept
         return kept.preset
     }
