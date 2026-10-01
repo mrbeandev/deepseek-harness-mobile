@@ -276,6 +276,9 @@ internal fun nextHasMore(freshCount: Int, hostHasMore: Boolean, overDelivered: B
 /** Projection key carrying the agent's pending input; the queue dock's source since 0.1.6-alpha.2. */
 private const val INBOX_PROJECTION = "inbox"
 
+/** Projection key carrying a session's agent preset; harness rows have no top-level field for it. */
+private const val AGENT_PRESET_PROJECTION = "agentPreset"
+
 /** Projection key carrying a parent's direct subagents; `subagents/list` was removed in 0.1.7. */
 private const val SUBAGENT_CATALOG_PROJECTION = "subagentCatalog"
 
@@ -494,6 +497,9 @@ class SessionStore @Inject constructor(
     private val sessionRows = LinkedHashMap<String, SessionRow>()
     private val runningBySession = HashMap<String, Boolean>()
     private val titleBySession = HashMap<String, String>()
+
+    /** The newest agent preset seen per session, from either the list or the control stream. */
+    private val presetBySession = HashMap<String, AgentPresetState>()
     private val workspaceRows = LinkedHashMap<String, WorkspaceRow>()
     private val workspaceOrder = ArrayList<String>()
     private var archived = emptySet<String>()
@@ -627,6 +633,10 @@ class SessionStore @Inject constructor(
     private fun startHostStreams() {
         val mux = connectionManager.generation?.mux ?: return
         controlJob?.cancel()
+        // Preset watermarks are log positions as this host reported them. A harness restored from
+        // an older snapshot can hand back the same session ids at lower positions, so the new
+        // stream's baseline and the list read that follows start them over.
+        synchronized(lock) { presetBySession.clear() }
         controlJob = scope.launch {
             runCatching {
                 mux.openStream("session/control").collect { item ->
@@ -866,6 +876,15 @@ class SessionStore @Inject constructor(
                 // session's pending work is rebuilt from its own `inbox` projection.
                 val legacy = frame.value.queues.mapValues { (_, items) -> items.map(::queuedInboxItemToQueueItem) }
                 queuesBySession.value = inboxQueuesFrom(frame.value.projections) + legacy
+                synchronized(lock) {
+                    var changed = false
+                    frame.value.projections.forEach { (sessionId, block) ->
+                        val asOf = block["asOfSeq"]?.jsonPrimitive?.intOrNull ?: 0
+                        val value = (block["values"] as? JsonObject)?.get(AGENT_PRESET_PROJECTION)
+                        if (foldAgentPresetLocked(sessionId, asOf, value)) changed = true
+                    }
+                    if (changed) emitSessionsLocked()
+                }
                 val sid = synchronized(lock) { currentId } ?: return
                 frame.value.queues[sid]?.let { items -> applyQueue(sid, items) }
                 frame.value.jobs[sid]?.let { jobs -> applyJobs(sid, jobs) }
@@ -881,6 +900,13 @@ class SessionStore @Inject constructor(
                     queuesBySession.value = queuesBySession.value + (frame.sessionId to items)
                 }
                 synchronized(lock) {
+                    // Another client (the web GUI) can pick a preset after our list read, and the
+                    // list row is what the top-bar chip and the details pill draw from.
+                    if (frame.key == AGENT_PRESET_PROJECTION &&
+                        foldAgentPresetLocked(frame.sessionId, frame.seq, frame.value)
+                    ) {
+                        emitSessionsLocked()
+                    }
                     if (frame.sessionId == currentId) {
                         mergeProjectionLocked(frame.key, frame.seq, frame.value)
                         rebuildCurrentLocked()
@@ -889,6 +915,37 @@ class SessionStore @Inject constructor(
             }
             is SessionControlFrame.Unknown -> log("unknown control frame ${frame.type}")
         }
+    }
+
+    /**
+     * Fold one `agentPreset` projection value seen at [seq] into the session's row. Returns whether
+     * the row changed; the caller publishes. A session with no row yet keeps the value for the
+     * list read that brings its row, rather than having a row invented here.
+     */
+    private fun foldAgentPresetLocked(sessionId: String, seq: Int, value: JsonElement?): Boolean {
+        val incoming = agentPresetUpdate(seq, value) ?: return false
+        val kept = newerAgentPreset(presetBySession[sessionId], incoming)
+        presetBySession[sessionId] = kept
+        val row = sessionRows[sessionId] ?: return false
+        if (row.agentPreset == kept.preset) return false
+        sessionRows[sessionId] = row.copy(agentPreset = kept.preset)
+        return true
+    }
+
+    /**
+     * The preset a list row should show: its own, unless the control stream already delivered one
+     * from a later position in the session's log. A row without a projection block has no position
+     * and yields to anything already seen.
+     */
+    private fun listedAgentPresetLocked(item: SessionSummary): String? {
+        val kept = listedAgentPreset(
+            held = presetBySession[item.sessionId],
+            asOfSeq = item.projections?.asOfSeq ?: -1,
+            topLevel = item.agentPreset,
+            projected = item.projections?.values?.get(AGENT_PRESET_PROJECTION),
+        ) ?: return null
+        presetBySession[item.sessionId] = kept
+        return kept.preset
     }
 
     /**
@@ -1078,13 +1135,14 @@ class SessionStore @Inject constructor(
         synchronized(lock) {
             val existing = sessionRows[item.sessionId]
             val title = titleBySession[item.sessionId]
+            val preset = listedAgentPresetLocked(item)
             val row = existing?.copy(
                 title = title ?: existing.title,
                 blank = item.blank,
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPresetEffective,
+                agentPreset = preset,
             ) ?: SessionRow(
                 sessionId = item.sessionId,
                 title = title,
@@ -1093,7 +1151,7 @@ class SessionStore @Inject constructor(
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPresetEffective,
+                agentPreset = preset,
                 updatedAt = item.updatedAt,
                 pendingInteraction = null,
             )
@@ -1116,6 +1174,7 @@ class SessionStore @Inject constructor(
             sessionRows.remove(sessionId)
             pendingKinds.remove(sessionId)
             runningBySession.remove(sessionId)
+            presetBySession.remove(sessionId)
             questionEvents.discard(sessionId)
             emitSessionsLocked()
         }
@@ -1339,7 +1398,7 @@ class SessionStore @Inject constructor(
                             parentSessionId = item.parentSessionId,
                             origin = item.origin,
                             cwd = item.cwd,
-                            agentPreset = item.agentPresetEffective,
+                            agentPreset = listedAgentPresetLocked(item),
                             updatedAt = item.updatedAt,
                             pendingInteraction = null,
                         )

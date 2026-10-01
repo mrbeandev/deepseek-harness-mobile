@@ -3,6 +3,30 @@
 All notable changes to DSH Mobile are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); the project uses SemVer.
 
+## [0.12.2] - 2026-10-01
+
+Fixes the agent preset chip, which has not appeared on any harness this app supports.
+
+### Fixed
+
+- **The agent preset chip never showed.** The harness sends a session's preset only inside the
+  list row's projections, as `projections.values.agentPreset`, but the app read a top-level
+  `agentPreset` field that no supported harness sends. So the chip in the chat top bar, the
+  current mark in the preset picker and the pill in the details panel never appeared, and with no
+  chip there was no way to open the picker. The app now reads the projection. (#45, #46, from
+  @bumblebeers)
+- **A preset picked somewhere else now shows up right away.** When the web GUI or another phone
+  picks a preset, the harness pushes the new value on the control stream, and the app now applies
+  it to that session's row.
+
+### Internal
+
+- The protocol end-to-end test's mocked `session/list` row now has the shape the harness sends,
+  with the preset inside `projections`. No mock had that shape before, which is how the bug got
+  past the tests.
+- A new conformance test checks that shape against a real harness: a blank session's row reports
+  its preset only through the projection, and the row follows an `agentPresets/select`.
+
 ## [0.12.1] - 2026-09-29
 
 Moves the protocol baseline to DeepSeek Harness 0.2.0-rc.1. Nothing the app sends or reads
