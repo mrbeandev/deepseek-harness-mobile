@@ -276,6 +276,9 @@ internal fun nextHasMore(freshCount: Int, hostHasMore: Boolean, overDelivered: B
 /** Projection key carrying the agent's pending input; the queue dock's source since 0.1.6-alpha.2. */
 private const val INBOX_PROJECTION = "inbox"
 
+/** Projection key carrying a session's agent preset; harness rows have no top-level field for it. */
+private const val AGENT_PRESET_PROJECTION = "agentPreset"
+
 /** Projection key carrying a parent's direct subagents; `subagents/list` was removed in 0.1.7. */
 private const val SUBAGENT_CATALOG_PROJECTION = "subagentCatalog"
 
@@ -866,6 +869,14 @@ class SessionStore @Inject constructor(
                 // session's pending work is rebuilt from its own `inbox` projection.
                 val legacy = frame.value.queues.mapValues { (_, items) -> items.map(::queuedInboxItemToQueueItem) }
                 queuesBySession.value = inboxQueuesFrom(frame.value.projections) + legacy
+                synchronized(lock) {
+                    var changed = false
+                    frame.value.projections.forEach { (sessionId, block) ->
+                        val value = (block["values"] as? JsonObject)?.get(AGENT_PRESET_PROJECTION)
+                        if (foldAgentPresetLocked(sessionId, value)) changed = true
+                    }
+                    if (changed) emitSessionsLocked()
+                }
                 val sid = synchronized(lock) { currentId } ?: return
                 frame.value.queues[sid]?.let { items -> applyQueue(sid, items) }
                 frame.value.jobs[sid]?.let { jobs -> applyJobs(sid, jobs) }
@@ -881,6 +892,11 @@ class SessionStore @Inject constructor(
                     queuesBySession.value = queuesBySession.value + (frame.sessionId to items)
                 }
                 synchronized(lock) {
+                    // Another client (the web GUI) can pick a preset after our list read, and the
+                    // list row is what the top-bar chip and the details pill draw from.
+                    if (frame.key == AGENT_PRESET_PROJECTION && foldAgentPresetLocked(frame.sessionId, frame.value)) {
+                        emitSessionsLocked()
+                    }
                     if (frame.sessionId == currentId) {
                         mergeProjectionLocked(frame.key, frame.seq, frame.value)
                         rebuildCurrentLocked()
@@ -889,6 +905,19 @@ class SessionStore @Inject constructor(
             }
             is SessionControlFrame.Unknown -> log("unknown control frame ${frame.type}")
         }
+    }
+
+    /**
+     * Fold one `agentPreset` projection value into a known session row. Returns whether the row
+     * changed; the caller publishes. A session this store has no row for is left for the next list
+     * read rather than invented here.
+     */
+    private fun foldAgentPresetLocked(sessionId: String, value: JsonElement?): Boolean {
+        val row = sessionRows[sessionId] ?: return false
+        val preset = agentPresetFromProjection(row.agentPreset, value)
+        if (preset == row.agentPreset) return false
+        sessionRows[sessionId] = row.copy(agentPreset = preset)
+        return true
     }
 
     /**
