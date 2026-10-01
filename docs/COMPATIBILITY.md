@@ -6,7 +6,8 @@ DSH Mobile speaks the DeepSeek Harness web-client protocol over `/api`. The prot
 
 | DSH Mobile | Harness | Notes |
 |---|---|---|
-| 0.12.1 | 0.2.0-rc.1 | Current. Nothing this client uses changed since 0.1.7-rc.2; 0.1.7-rc.x and 0.1.6-alpha.x hosts still work |
+| 0.12.2 | 0.2.0-rc.1 | Current. Nothing this client uses changed since 0.1.7-rc.2; 0.1.7-rc.x and 0.1.6-alpha.x hosts still work |
+| 0.12.1 | 0.2.0-rc.1 | The agent preset chip never shows |
 | 0.12.0 | 0.1.7-rc.2 | Still reads 0.1.6-alpha.x |
 | 0.11.5 – 0.11.7 | 0.1.6-alpha.2 | Against 0.1.7, tool cards lose their results and presets, subagents, jobs, previews and archiving fail |
 | 0.11.4 | 0.1.6-alpha.1 | Empty queue dock on later master; PTC dispatch rows in the transcript |
@@ -32,7 +33,7 @@ DSH Mobile speaks the DeepSeek Harness web-client protocol over `/api`. The prot
 
 | DSH Mobile | dsh-relay | Notes |
 |---|---|---|
-| 0.11.0 – 0.12.1 | 0.2.1 | From 0.11.2 the `Host` header brackets an IPv6 literal; from 0.12.0 `readBytes` answers as multipart, which the relay passes through |
+| 0.11.0 – 0.12.2 | 0.2.1 | From 0.11.2 the `Host` header brackets an IPv6 literal; from 0.12.0 `readBytes` answers as multipart, which the relay passes through |
 | 0.10.0 – 0.10.1 | 0.2.1 | Pairing payload and mDNS TXT `v: 1` |
 | 0.9.1 – 0.9.3 | 0.2.1 | |
 | 0.9.0 | 0.2.0 | |
