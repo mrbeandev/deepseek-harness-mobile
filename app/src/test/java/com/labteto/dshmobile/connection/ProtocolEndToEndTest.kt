@@ -59,6 +59,7 @@ import kotlinx.serialization.json.putJsonObject
 import okhttp3.OkHttpClient
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -209,12 +210,22 @@ class ProtocolEndToEndTest {
                         put("updatedAt", 5L)
                         put("running", false)
                         put("blank", false)
+                        // The harness publishes the preset only as a projection on list rows.
+                        putJsonObject("projections") {
+                            put("asOfSeq", 3)
+                            putJsonObject("values") { put("agentPreset", "standard") }
+                        }
                     }
                 }
             }
         }
         when (val result = client().sessionList()) {
-            is RpcResult.Ok -> assertEquals("s1", result.value.items.single().sessionId)
+            is RpcResult.Ok -> {
+                val row = result.value.items.single()
+                assertEquals("s1", row.sessionId)
+                assertNull(row.agentPreset)
+                assertEquals("standard", row.agentPresetEffective)
+            }
             is RpcResult.Err -> error("session/list failed: ${result.error.code} ${result.error.message}")
         }
     }
