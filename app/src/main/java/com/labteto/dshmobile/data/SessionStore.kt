@@ -1084,7 +1084,7 @@ class SessionStore @Inject constructor(
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPreset,
+                agentPreset = item.agentPresetEffective,
             ) ?: SessionRow(
                 sessionId = item.sessionId,
                 title = title,
@@ -1093,7 +1093,7 @@ class SessionStore @Inject constructor(
                 parentSessionId = item.parentSessionId,
                 origin = item.origin,
                 cwd = item.cwd,
-                agentPreset = item.agentPreset,
+                agentPreset = item.agentPresetEffective,
                 updatedAt = item.updatedAt,
                 pendingInteraction = null,
             )
@@ -1339,7 +1339,7 @@ class SessionStore @Inject constructor(
                             parentSessionId = item.parentSessionId,
                             origin = item.origin,
                             cwd = item.cwd,
-                            agentPreset = item.agentPreset,
+                            agentPreset = item.agentPresetEffective,
                             updatedAt = item.updatedAt,
                             pendingInteraction = null,
                         )
