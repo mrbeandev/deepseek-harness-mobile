@@ -112,9 +112,10 @@ internal fun toolRowModel(
 ): ToolRowModel {
     val variant = classifyTool(toolName)
     val arguments = parseArguments(argumentsJson)
+    val displayArguments = arguments ?: argumentsJson?.let { com.labteto.dshmobile.core.wire.partialArgumentStrings(it) }
     val derived = SUMMARY_KEYS[variant]
         .orEmpty()
-        .firstNotNullOfOrNull { key -> arguments?.get(key).asSummary()?.takeIf { it.isNotBlank() } }
+        .firstNotNullOfOrNull { key -> displayArguments?.get(key).asSummary()?.takeIf { it.isNotBlank() } }
     val relative = derived?.let { relativizeToCwd(it, cwd) }
     // An unclassified tool with no presenter title would otherwise render as a bare "Tool call"
     // with nothing identifying it, so its raw name carries the summary instead.

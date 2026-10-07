@@ -292,7 +292,7 @@ class ConnectViewModel @Inject constructor(
                         )
                     }
                     if (description != null) {
-                        hostsStore.cacheDescription(host.host, host.port, description)
+                        hostsStore.cacheDescription(host.id, description)
                     }
                 }
             }.awaitAll()
@@ -472,7 +472,7 @@ class ConnectViewModel @Inject constructor(
         // A port named inside it was typed as part of this address, so it outranks the port field,
         // which may still hold the default from a different harness.
         val input = parseHostInput(host)
-        val portInt = input?.port ?: port.trim().toIntOrNull()
+        val portInt = input?.port ?: when (input?.useTls) { true -> 443; false -> 80; null -> port.trim().toIntOrNull() }
         if (input == null || portInt == null || portInt !in 1..65535) {
             fail(ConnectFailure.InvalidInput, attempted = null)
             return
@@ -480,7 +480,7 @@ class ConnectViewModel @Inject constructor(
         // An explicit scheme decides; otherwise port 443 means a TLS reverse proxy — the harness
         // itself never serves there, and plaintext to a TLS port yields an answer no one can read.
         val useTls = input.useTls ?: (portInt == 443)
-        val authority = "${input.host}:$portInt"
+        val authority = com.labteto.dshmobile.connection.endpointKey(input.host, portInt, useTls, input.basePath)
         val isLoopback = input.host == LOOPBACK || input.host == "localhost"
 
         localStage = ConnectStage.Validating
@@ -496,7 +496,7 @@ class ConnectViewModel @Inject constructor(
             // than relying on being on the same wire, and reaching one through a forwarded port or a
             // VPN is the reason the relay exists — so for those the guard would be refusing the
             // supported case with a confident, wrong explanation.
-            if (!isLoopback && paired == null && !discoveryEngine.isOnLocalSubnet(input.host)) {
+            if (!isLoopback && paired == null && input.useTls == null && !discoveryEngine.isOnLocalSubnet(input.host)) {
                 fail(ConnectFailure.DifferentSubnet(discoveryEngine.localSubnetLabel()), authority)
                 return@launch
             }
@@ -509,13 +509,14 @@ class ConnectViewModel @Inject constructor(
                 preflight = true,
                 useTls = useTls,
                 config = paired,
+                basePath = input.basePath,
             )
             if (outcome !is ProbeOutcome.Reachable) {
                 // Authentication happens before a successful probe. Remember the exact attempted
                 // authority so a first-time host can exchange its launch token from the dialog.
                 if (outcome is ProbeOutcome.Unauthenticated && paired == null) {
                     val target = hostsStore.rememberHost(name = input.host, host = input.host,
-                        port = portInt, isLoopback = isLoopback, useTls = useTls)
+                        port = portInt, isLoopback = isLoopback, useTls = useTls, basePath = input.basePath)
                     _state.update { it.copy(remembered = it.remembered.filterNot { h -> h.id == target.id } + target) }
                 }
                 fail(ConnectFailure.from(outcome, relay = paired != null), authority)
@@ -533,6 +534,7 @@ class ConnectViewModel @Inject constructor(
                 isLoopback = isLoopback,
                 useTls = useTls,
                 description = outcome.description,
+                basePath = input.basePath,
             )
             connectTo(config)
         }

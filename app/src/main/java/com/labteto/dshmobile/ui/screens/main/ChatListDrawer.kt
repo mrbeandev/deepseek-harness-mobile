@@ -93,9 +93,11 @@ private const val SORT_UPDATED = "updated"
 fun ChatListDrawer(
     onClose: () -> Unit,
     onOpenSettings: () -> Unit,
+    onOpenAutomations: () -> Unit = {},
 ) {
     val colors = DsTheme.colors
     val store = rememberSessionStore()
+    val automationAvailable by store.automationAvailable.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
     val hostsStore = rememberHostsStore()
 
@@ -229,6 +231,11 @@ fun ChatListDrawer(
             onClick = { newSessionOpen = true },
             variant = DsButtonVariant.Info,
             modifier = Modifier.fillMaxWidth(),
+        )
+
+        if (automationAvailable != false) DsButton(
+            text = stringResource(R.string.harness_automations), onClick = onOpenAutomations,
+            variant = DsButtonVariant.Ghost, modifier = Modifier.fillMaxWidth(),
         )
 
         // The search field folds away rather than permanently occupying a row of a phone-height
@@ -716,7 +723,7 @@ private fun SessionRowItem(
             Spacer(Modifier.width(DsSpacing.small))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = sessionTitle(session),
+                    text = displaySessionTitle(session),
                     style = DsType.std14,
                     color = colors.labelPrimary,
                     maxLines = 1,
@@ -725,7 +732,7 @@ private fun SessionRowItem(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     session.cwd?.takeIf { it.isNotBlank() }?.let {
                         Text(
-                            basename(it),
+                            technicalDisplay(basename(it)),
                             style = DsType.caption11,
                             color = colors.labelCaption,
                             maxLines = 1,
@@ -799,7 +806,7 @@ private fun SessionRowItem(
     if (archiveConfirmOpen) {
         ConfirmDialog(
             title = stringResource(R.string.chatlist_session_archive),
-            body = sessionTitle(session),
+            body = displaySessionTitle(session),
             confirmLabel = stringResource(R.string.common_archive),
             onDismiss = { archiveConfirmOpen = false },
             onConfirm = {
@@ -854,7 +861,7 @@ private fun SearchResultRow(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                text = sessionTitle(hit.session),
+                text = displaySessionTitle(hit.session),
                 style = DsType.rowText,
                 color = colors.labelPrimary,
                 maxLines = 1,
@@ -999,6 +1006,9 @@ internal fun indexSubagents(
 }
 
 /** Display title: an explicit title, else the working directory's folder, else the id. */
+private fun displaySessionTitle(session: SessionRow): String =
+    sessionTitle(session).let { if (session.title.isNullOrBlank()) technicalDisplay(it) else it }
+
 internal fun sessionTitle(session: SessionRow): String {
     val title = session.title?.takeIf { it.isNotBlank() }
     val folder = session.cwd?.takeIf { it.isNotBlank() }?.let { basename(it) }?.takeIf { it.isNotBlank() }

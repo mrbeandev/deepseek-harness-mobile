@@ -59,6 +59,8 @@ fun DsSegmented(
     role: Role = Role.RadioButton,
     enabled: Boolean = true,
     stretch: Boolean = false,
+    minSegmentHeight: Dp? = null,
+    maxLabelLines: Int = 1,
 ) {
     val colors = DsTheme.colors
     Row(
@@ -83,7 +85,8 @@ fun DsSegmented(
                 // A stretched track is a primary control rather than an inline one, so its segments
                 // get a button's height. 24dp is a comfortable inline chip and an uncomfortably
                 // small thing to hit when it is the first decision on a screen.
-                minHeight = if (stretch) 36.dp else 24.dp,
+                minHeight = minSegmentHeight ?: if (stretch) 36.dp else 24.dp,
+                maxLabelLines = maxLabelLines,
                 modifier = Modifier.weight(1f, fill = stretch),
             )
         }
@@ -98,6 +101,7 @@ private fun DsSegment(
     role: Role,
     onClick: () -> Unit,
     minHeight: Dp,
+    maxLabelLines: Int,
     modifier: Modifier = Modifier,
 ) {
     val colors = DsTheme.colors
@@ -123,7 +127,7 @@ private fun DsSegment(
                 selected -> colors.accent
                 else -> colors.labelTertiary
             },
-            maxLines = 1,
+            maxLines = maxLabelLines,
             overflow = TextOverflow.Ellipsis,
         )
     }

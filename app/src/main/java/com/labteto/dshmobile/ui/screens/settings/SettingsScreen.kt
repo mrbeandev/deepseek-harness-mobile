@@ -92,6 +92,7 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
     val store = rememberSessionStore()
     val plugins by store.plugins.collectAsStateWithLifecycle()
+    val pluginManagementAvailable by store.pluginManagementAvailable.collectAsStateWithLifecycle()
     val colors = DsTheme.colors
     val toast = rememberDsToast()
     var showDisconnectDialog by remember { mutableStateOf(false) }
@@ -195,8 +196,17 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
 
                 // Its own card rather than an addition to the harness one above: that card's
                 // read-only banner is scoped to the facts it shows, and plugins are a different
-                // subject that happens to also be read-only.
-                plugins?.let { PluginsCard(it) { pluginsOpen = true } }
+                // subject managed through the pluginManager capability.
+                if (pluginManagementAvailable != false) {
+                    SettingsCard(stringResource(R.string.settings_plugins)) {
+                        Row(Modifier.fillMaxWidth().heightIn(min = DsSpacing.touchTarget)
+                            .clickable { pluginsOpen = true }, verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.ux_a_manage_plugins), Modifier.weight(1f), style = DsType.std14, color = colors.labelSecondary)
+                            Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = colors.labelTertiary)
+                        }
+                        if (plugins == null) Text(stringResource(R.string.common_loading), style = DsType.small13, color = colors.labelTertiary)
+                    }
+                } else plugins?.let { PluginsCard(it) { pluginsOpen = true } }
 
                 SettingsCard(stringResource(R.string.settings_data)) {
                     DsButton(
@@ -238,8 +248,9 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
         }
     }
 
-    plugins?.takeIf { pluginsOpen }?.let {
-        PluginsSheet(inventory = it, onDismiss = { pluginsOpen = false })
+    if (pluginsOpen) {
+        if (pluginManagementAvailable == false) plugins?.let { PluginsSheet(it, onDismiss = { pluginsOpen = false }) }
+        else com.labteto.dshmobile.ui.screens.main.PluginManagerScreen(onClose = { pluginsOpen = false }, onDraftOpened = { pluginsOpen = false; onClose() })
     }
 
     if (showDisconnectDialog) {
@@ -357,7 +368,7 @@ private fun PluginsCard(inventory: PluginInventorySnapshot, onOpen: () -> Unit) 
  * the same on nearly every row and push the part that differs off the end of a phone screen.
  */
 @Composable
-private fun PluginsSheet(inventory: PluginInventorySnapshot, onDismiss: () -> Unit) {
+internal fun PluginsSheet(inventory: PluginInventorySnapshot, onDismiss: () -> Unit) {
     val colors = DsTheme.colors
     var filter by remember { mutableStateOf("") }
     val matching = remember(inventory, filter) {
@@ -421,7 +432,7 @@ private fun PluginRow(entry: PluginInventoryEntry) {
             verticalArrangement = Arrangement.spacedBy(DsSpacing.tiny),
         ) {
             Text(entry.entryId, style = DsType.caption11, color = colors.labelCaption)
-            Text(entry.moduleName, style = DsType.caption11, color = colors.labelCaption)
+            Text(com.labteto.dshmobile.ui.screens.main.technicalDisplay(entry.moduleName), style = DsType.caption11, color = colors.labelCaption)
             // The mount phase only means anything for a plugin the composition asked for.
             if (entry.enabled) {
                 Row(verticalAlignment = Alignment.CenterVertically) {

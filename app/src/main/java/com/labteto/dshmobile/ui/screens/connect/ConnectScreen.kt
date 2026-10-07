@@ -43,6 +43,7 @@ import com.labteto.dshmobile.connection.ConnectMode
 import com.labteto.dshmobile.connection.ConnectStage
 import com.labteto.dshmobile.connection.DiscoveredHost
 import com.labteto.dshmobile.connection.HostConfig
+import com.labteto.dshmobile.connection.parseHostInput
 import com.labteto.dshmobile.ui.components.DsButton
 import com.labteto.dshmobile.ui.components.DsButtonSize
 import com.labteto.dshmobile.ui.components.DsButtonVariant
@@ -672,10 +673,9 @@ private fun ConnectFailureBlock(
 ) {
     val colors = DsTheme.colors
     val authority = attempted.orEmpty()
-    val port = authority.substringAfterLast(':', "").toIntOrNull() ?: 0
-    // `connect_failed` is formatted from the two halves so it reads as one address; feeding it the
-    // whole authority plus an empty port left a trailing colon. Blank means there was nothing to
-    // attempt (bad input), and a headline naming no address would say nothing.
+    val address = parseHostInput(authority)
+    val port = address?.port ?: if (address?.useTls == true) 443 else 80
+    // Display the complete endpoint, including its proxy prefix; parse only for port-specific advice.
     val title = when {
         failure is ConnectFailure.TrustFence -> stringResource(R.string.connect_fail_fence_title)
         failure is ConnectFailure.PairingRequired -> stringResource(R.string.connect_fail_pairing_title)
@@ -685,8 +685,7 @@ private fun ConnectFailureBlock(
         authority.isBlank() -> null
         else -> stringResource(
             R.string.connect_failed,
-            authority.substringBeforeLast(':', authority),
-            port.toString(),
+            authority,
         )
     }
     val body = when (failure) {

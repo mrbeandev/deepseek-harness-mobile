@@ -3,6 +3,7 @@ package com.labteto.dshmobile.ui.screens.main
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,6 +26,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -95,14 +98,14 @@ internal fun TodoDock(todos: List<TodoEntry>, modifier: Modifier = Modifier) {
 internal fun GoalSummary(goal: GoalSnapshot) {
     val colors = DsTheme.colors
     SectionHeader(stringResource(R.string.goal_title))
-    DsPill(text = stringResource(goalPhaseLabelRes(goal.phase)))
+    GoalPhaseBadge(goal.phase)
     Spacer(Modifier.height(4.dp))
     Text(goal.objective, style = DsType.small13, color = colors.labelSecondary)
     goal.blockedReason?.let {
         Text(
             stringResource(R.string.goal_blocked_reason, it.message),
             style = DsType.caption11,
-            color = colors.warnLabel,
+            color = colors.warnText,
         )
     }
 }
@@ -130,12 +133,12 @@ internal fun GoalBar(goal: GoalSnapshot, store: SessionStore, modifier: Modifier
             goal.objective,
             style = DsType.small13,
             color = colors.labelSecondary,
-            maxLines = 1,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
-        DsPill(text = stringResource(goalPhaseLabelRes(goal.phase)))
+        GoalPhaseBadge(goal.phase)
         Spacer(Modifier.width(4.dp))
         DsMenu(
             anchor = {
@@ -174,6 +177,7 @@ internal fun GoalBar(goal: GoalSnapshot, store: SessionStore, modifier: Modifier
     if (editing) {
         DsDialog(title = stringResource(R.string.goal_edit), onDismiss = { editing = false }) {
             TextField(
+                minLines = 3,
                 value = editText,
                 onValueChange = { editText = it },
                 modifier = Modifier.fillMaxWidth(),
@@ -197,6 +201,13 @@ internal fun GoalBar(goal: GoalSnapshot, store: SessionStore, modifier: Modifier
             }
         }
     }
+}
+
+/** A status is descriptive, not a disabled action; suppress the shared pill's click semantics. */
+@Composable
+private fun GoalPhaseBadge(phase: GoalPhase) {
+    val label = stringResource(goalPhaseLabelRes(phase))
+    Box(Modifier.clearAndSetSemantics { contentDescription = label }) { DsPill(text = label) }
 }
 
 /** Pending turns, with the edit / remove / steer verbs the harness exposes. */

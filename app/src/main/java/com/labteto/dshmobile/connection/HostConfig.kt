@@ -29,6 +29,7 @@ data class HostConfig(
      * way it is ever reached over TLS.
      */
     val useTls: Boolean = false,
+    val basePath: String = "",
     val lastConnectedAt: Long = 0L,
     /**
      * The host account's home directory, as of the last successful connection.
@@ -47,11 +48,11 @@ data class HostConfig(
     val relayTokenExpiresAt: Long = 0L,
 ) {
     /** Bare `host:port` — the identity key and display form, deliberately scheme-free. */
-    val authority: String get() = "$host:$port"
-    val baseUrl: String get() = harnessBaseUrl(host, port, useTls)
+    val authority: String get() = endpointKey(host, port, useTls, basePath)
+    val baseUrl: String get() = harnessBaseUrl(host, port, useTls, basePath)
 
     /** What a card prints: the authority, scheme-qualified only when it is not the plain default. */
-    val displayAddress: String get() = if (useTls) "https://$authority" else authority
+    val displayAddress: String get() = authority
 
     /**
      * Whether this endpoint is a paired relay.
@@ -82,6 +83,7 @@ data class DiscoveredHost(
     val description: HostDescription?,
     /** True when the advertisement said the listener terminates TLS. */
     val useTls: Boolean = false,
+    val basePath: String = "",
     /** SPKI pin from the mDNS `pin` record, when the listener terminates TLS. */
     val fingerprint: String? = null,
     /**
@@ -99,10 +101,10 @@ data class DiscoveredHost(
      */
     val hostRefused: Boolean = false,
 ) {
-    val authority: String get() = "$host:$port"
+    val authority: String get() = endpointKey(host, port, useTls, basePath)
 
     /** Origin to address this endpoint by. */
-    val baseUrl: String get() = harnessBaseUrl(host, port, useTls)
+    val baseUrl: String get() = harnessBaseUrl(host, port, useTls, basePath)
 
     /** Whether the harness accepted an `/api` call from this device. */
     val trusted: Boolean get() = description != null

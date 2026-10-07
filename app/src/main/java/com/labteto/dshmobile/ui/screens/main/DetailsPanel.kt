@@ -1,5 +1,7 @@
 package com.labteto.dshmobile.ui.screens.main
 
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -103,9 +105,11 @@ import kotlinx.serialization.json.contentOrNull
 fun DetailsPanel(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
+    onOpenAutomations: () -> Unit = {},
 ) {
     BackHandler(onBack = onClose)
     val store = rememberSessionStore()
+    val automationAvailable by store.automationAvailable.collectAsStateWithLifecycle()
     val colors = DsTheme.colors
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
@@ -166,6 +170,10 @@ fun DetailsPanel(
                 verticalArrangement = Arrangement.spacedBy(DsSpacing.small),
             ) {
                 HeaderRow(onClose)
+                if (automationAvailable != false) DsButton(
+                    text = stringResource(R.string.harness_automations), onClick = onOpenAutomations,
+                    variant = DsButtonVariant.Ghost, modifier = Modifier.fillMaxWidth(),
+                )
 
                 SessionCard(
                     session = current,
@@ -343,11 +351,11 @@ private fun SessionCard(
     if (session == null) return
     var renaming by remember(session.sessionId) { mutableStateOf(false) }
     Card(
-        title = session.title ?: session.cwd?.let { basename(it) } ?: session.sessionId,
-        summary = session.cwd?.let { basename(it) },
+        title = session.title ?: session.cwd?.let { technicalDisplay(basename(it)) } ?: technicalDisplay(session.sessionId),
+        summary = session.cwd?.let { technicalDisplay(basename(it)) },
         initiallyExpanded = true,
     ) {
-        session.cwd?.let { Text(it, style = DsType.caption11, color = colors.labelCaption) }
+        session.cwd?.let { Text(technicalDisplay(it), style = DsType.caption11, color = colors.labelCaption) }
         // The model and the preset are the two things about a session people most often come here
         // to check, and until now this panel could show only one of them and could change neither.
         // Both pills carry an onClick, which is also what makes them look pressable.
@@ -355,7 +363,7 @@ private fun SessionCard(
             models?.let { value ->
                 val group = value.groups.firstOrNull { it.id == value.current.provider }
                 val name = group?.models?.firstOrNull { it.id == value.current.model }?.name
-                DsPill(text = name ?: value.current.model, onClick = onOpenModels)
+                DsPill(text = name ?: technicalDisplay(value.current.model), onClick = onOpenModels)
             }
             session.agentPreset?.let {
                 DsPill(text = agentPresetLabel(it, presets), onClick = onOpenPresets)
@@ -479,7 +487,7 @@ private fun GoalCard(conversation: ConversationSnapshot, store: com.labteto.dshm
             Text(
                 stringResource(R.string.goal_blocked_reason, it.message),
                 style = DsType.caption11,
-                color = colors.warnLabel,
+                color = colors.warnText,
             )
         }
         if (goal.maxGoalRounds > 0) {

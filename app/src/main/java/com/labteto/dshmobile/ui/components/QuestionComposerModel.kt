@@ -22,6 +22,7 @@ import com.labteto.dshmobile.core.wire.dto.AskUserQuestionOption
  */
 
 /** What the user has picked or typed for one question, before it is encoded for the wire. */
+@kotlinx.serialization.Serializable
 internal data class QuestionDraft(
     val selected: List<String> = emptyList(),
     val custom: String = "",

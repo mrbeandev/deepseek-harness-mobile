@@ -12,7 +12,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.rememberDrawerState
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -20,6 +22,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.labteto.dshmobile.R
+import com.labteto.dshmobile.ui.components.DsToastHost
+import com.labteto.dshmobile.ui.components.rememberDsToast
 import androidx.compose.ui.input.pointer.changedToUpIgnoreConsumed
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
@@ -46,6 +52,19 @@ import kotlinx.coroutines.launch
 fun MainScreen(onOpenSettings: () -> Unit) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var automationsOpen by remember { mutableStateOf(false) }
+    var automationSession by remember { mutableStateOf<String?>(null) }
+    val store = com.labteto.dshmobile.ui.rememberSessionStore()
+    val automationAvailable by store.automationAvailable.collectAsStateWithLifecycle()
+    val toast = rememberDsToast()
+    val unsupportedAutomation = stringResource(R.string.ux_b_automation_unavailable)
+    LaunchedEffect(automationAvailable, automationsOpen) {
+        if (automationAvailable == false && automationsOpen) {
+            automationsOpen = false
+            automationSession = null
+            toast.second(unsupportedAutomation)
+        }
+    }
     var detailsOpen by remember { mutableStateOf(false) }
     val detailsWidth = 300.dp
 
@@ -55,6 +74,7 @@ fun MainScreen(onOpenSettings: () -> Unit) {
             ChatListDrawer(
                 onClose = { scope.launch { drawerState.close() } },
                 onOpenSettings = onOpenSettings,
+                onOpenAutomations = { automationSession = null; automationsOpen = true; scope.launch { drawerState.close() } },
             )
         },
     ) {
@@ -126,9 +146,12 @@ fun MainScreen(onOpenSettings: () -> Unit) {
             ) {
                 DetailsPanel(
                     onClose = { detailsOpen = false },
+                    onOpenAutomations = { automationSession = store.currentSessionId.value; automationsOpen = true; detailsOpen = false },
                     modifier = Modifier.width(detailsWidth),
                 )
             }
+            DsToastHost(toast, Modifier.align(Alignment.TopCenter))
         }
     }
+    if (automationsOpen && automationAvailable != false) AutomationScreen(automationSession, onClose = { automationsOpen = false })
 }

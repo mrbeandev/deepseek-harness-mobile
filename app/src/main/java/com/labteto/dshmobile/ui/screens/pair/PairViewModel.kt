@@ -250,6 +250,7 @@ class PairViewModel @Inject constructor(
             host = url.host,
             port = url.port,
             isLoopback = false,
+            basePath = url.encodedPath.trimEnd('/'),
             relay = RelayIdentity(
                 deviceId = response.deviceId,
                 useTls = url.scheme == "https",

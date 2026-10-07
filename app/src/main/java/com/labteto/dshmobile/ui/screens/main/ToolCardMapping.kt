@@ -87,21 +87,6 @@ private fun int(o: JsonObject, key: String): Int? = o[key]?.jsonPrimitive?.intOr
 private fun bool(o: JsonObject, key: String): Boolean? = o[key]?.jsonPrimitive?.booleanOrNull
 private fun meta(result: ToolResultNode?): JsonObject? = result?.meta as? JsonObject
 
-/**
- * The escalation pair shared by the first-party shell and file-mutation tools.
- *
- * Either both are absent or both are valid; a call carrying a permission without a justification
- * is not one this app is willing to render as a first-party card.
- */
-private fun validEscalation(args: JsonObject): Boolean {
-    val permission = args["sandbox_permissions"]
-    val justification = args["justification"]
-    if (permission == null && justification == null) return true
-    val level = permission?.jsonPrimitive?.contentOrNull
-    if (level != "workspace-write" && level != "danger-full-access") return false
-    return justification?.jsonPrimitive?.contentOrNull?.isNotBlank() == true
-}
-
 // ============================================================================================
 // Terminal
 // ============================================================================================
@@ -119,7 +104,6 @@ private fun shellCall(name: String, args: JsonObject): ShellCall? {
     if (name != "bash" && name != "pwsh") return null
     val command = str(args, "command")?.takeIf { it.isNotBlank() } ?: return null
     if (args.containsKey("workdir") && str(args, "workdir") == null) return null
-    if (!validEscalation(args)) return null
     val background = bool(args, "background") ?: bool(args, "run_in_background")
     if (!args.containsKey("description")) {
         // The shipped bash and pwsh schemas require `description`; the persistent-shell providers
@@ -279,7 +263,6 @@ private fun intendedDiff(call: ToolCallNode, args: JsonObject): IntendedDiff? {
         }
     }
     val path = str(args, "file_path")?.takeIf { it.isNotBlank() } ?: return null
-    if (!validEscalation(args)) return null
     if (call.name == "write") {
         val content = str(args, "content") ?: return null
         return IntendedDiff("write", DiffHunk(path, null, content))

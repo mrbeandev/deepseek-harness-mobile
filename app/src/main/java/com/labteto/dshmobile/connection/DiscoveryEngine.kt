@@ -168,6 +168,7 @@ class DiscoveryEngine @Inject constructor(
         preflight: Boolean = false,
         useTls: Boolean = false,
         config: HostConfig? = null,
+        basePath: String = "",
     ): ProbeOutcome = withContext(Dispatchers.IO) {
         if (preflight) {
             preflight(host, port, timeouts.connectMs)?.let { return@withContext it }
@@ -181,7 +182,7 @@ class DiscoveryEngine @Inject constructor(
         val client = if (config != null) {
             clientFactory.clientFor(config, timeouts)
         } else {
-            clientFactory.anonymousClient(harnessBaseUrl(host, port, useTls), timeouts)
+            clientFactory.anonymousClient(harnessBaseUrl(host, port, useTls, basePath), timeouts)
         }
         val relay = config?.isRelay == true
         // `host.describe` was the probe through 0.1.1: one call that proved the endpoint spoke the

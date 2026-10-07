@@ -16,12 +16,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -70,6 +72,8 @@ import com.labteto.dshmobile.core.wire.dto.FileAttachmentRef
 import com.labteto.dshmobile.core.wire.dto.PermissionSelect
 import com.labteto.dshmobile.core.wire.dto.displayPermissionPreset
 import com.labteto.dshmobile.ui.components.ContextMeter
+import com.labteto.dshmobile.ui.components.FeatherIcons
+import com.labteto.dshmobile.ui.components.DsIconButton
 import com.labteto.dshmobile.ui.components.skeleton
 import com.labteto.dshmobile.ui.theme.DsAnimations
 import com.labteto.dshmobile.ui.theme.DsShapes
@@ -162,7 +166,16 @@ internal fun Composer(
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
     preparing: Boolean = false,
+    cursor: Int = draft.length,
+    onCursorChange: (Int) -> Unit = {},
+    references: List<DraftReference> = emptyList(),
+    onOpenReference: (DraftReference) -> Unit = {},
+    onAddReference: () -> Unit = {},
 ) {
+    var editor by remember { mutableStateOf(androidx.compose.ui.text.input.TextFieldValue(draft, androidx.compose.ui.text.TextRange(cursor))) }
+    androidx.compose.runtime.LaunchedEffect(draft, cursor) {
+        if (editor.text != draft || editor.selection.end != cursor) editor = editor.copy(text = draft, selection = androidx.compose.ui.text.TextRange(cursor.coerceIn(0, draft.length)))
+    }
     val colors = DsTheme.colors
     val haptics = LocalHapticFeedback.current
     // A file that is still uploading has no receipt to cite yet, and one that failed never will;
@@ -182,131 +195,194 @@ internal fun Composer(
         color = colors.composerCard,
         border = BorderStroke(1.dp, colors.borderL1),
     ) {
-        Column(
-            Modifier.padding(DsSpacing.medium),
-            verticalArrangement = Arrangement.spacedBy(DsSpacing.small),
-        ) {
-            TextField(
-                value = draft,
-                onValueChange = onDraftChange,
-                modifier = Modifier.fillMaxWidth().onPreviewKeyEvent { event ->
-                    if (event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed)) {
-                        if (event.type == KeyEventType.KeyUp && canSend) {
-                            val text = currentDraft
-                            currentOnDraftChange("")
-                            currentOnSend(text)
-                        }
-                        true
-                    } else false
-                },
-                // No `keyboardActions` here. The field is multi-line, so it carries the default IME
-                // action and the on-screen return key inserts a newline — which means an
-                // `onSend` action could never fire, and the one that used to sit here never did.
-                // The send key is the button; Ctrl/Cmd+Enter above is the shortcut.
-                enabled = enabled,
-                placeholder = {
-                    Text(
-                        stringResource(R.string.chat_composer_hint),
-                        style = DsType.std14,
-                        color = colors.labelTertiary,
-                    )
-                },
-                minLines = 1,
-                maxLines = 8,
-                textStyle = DsType.std14,
-                colors = TextFieldDefaults.colors(
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    disabledContainerColor = Color.Transparent,
-                    focusedIndicatorColor = Color.Transparent,
-                    unfocusedIndicatorColor = Color.Transparent,
-                    disabledIndicatorColor = Color.Transparent,
-                    cursorColor = colors.accent,
-                    focusedTextColor = colors.labelPrimary,
-                    unfocusedTextColor = colors.labelPrimary,
-                ),
-            )
-
-            if (preparing) Text(stringResource(R.string.photos_preparing), style = DsType.caption11)
-            AnimatedVisibility(visible = attachments.isNotEmpty()) {
-                AttachmentStrip(attachments, onRemoveAttachment, onRetryAttachment)
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(DsSpacing.compact),
+        BoxWithConstraints {
+            val boundedHeight = constraints.hasBoundedHeight
+            Column(
+                Modifier.padding(horizontal = DsSpacing.medium, vertical = DsSpacing.small),
+                verticalArrangement = Arrangement.spacedBy(DsSpacing.small),
             ) {
-                CircleAction(
-                    icon = Icons.Filled.Add,
-                    description = stringResource(R.string.chat_composer_commands),
-                    size = 30,
-                    background = colors.hoverSolid,
-                    tint = colors.labelPrimary,
-                    enabled = enabled,
-                    onClick = onOpenSheet,
-                )
-
-                PermissionChip(
-                    select = permissions,
-                    pending = pendingPermission,
-                    enabled = enabled,
-                    onPick = onPermissionPick,
-                )
-
-                Spacer(Modifier.weight(1f))
-
-                ContextMeter(contextBreakdown, contextPressure)
-
-                // Send is always present; stop joins it while a turn runs.
-                //
-                // These used to share one slot, swapping on `running`, which meant a running
-                // session offered no way to send at all — the Queue and Steer modes in the + sheet
-                // were unreachable from the phone, and the on-screen return key inserts a newline,
-                // so there was nothing else to press. The host has always admitted
-                // `session/prompt` with `mode: queue|steer` mid-turn; only the button was missing.
-                //
-                // Stop keeps the right-hand position it had, so the gesture for stopping a turn is
-                // where it always was and send appears beside it rather than under the thumb
-                // already reaching for stop.
-                CircleAction(
-                    icon = Icons.Filled.ArrowUpward,
-                    description = stringResource(R.string.chat_composer_send),
-                    size = 36,
-                    background = if (canSend) colors.buttonInfoFill else colors.buttonPrimaryDimmed,
-                    tint = if (canSend) Color.White else colors.labelTertiary,
-                    enabled = canSend,
-                    onClick = {
-                        val text = currentDraft
-                        currentOnDraftChange("")
-                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        currentOnSend(text)
+                // Reserve the action row before measuring any draft content, including attachments.
+                Column(
+                    Modifier.then(if (boundedHeight) Modifier.weight(1f, fill = false) else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(DsSpacing.small),
+                ) {
+                if (references.isNotEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(DsSpacing.small),
+                    ) {
+                        references.forEach { reference ->
+                            val type = referenceKindLabel(reference.kind)
+                            val openLabel = stringResource(R.string.ux_b_open_reference, type, reference.label)
+                            Row(
+                                Modifier.clip(DsShapes.cube).background(colors.hoverSolid),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                Row(
+                                    Modifier.heightIn(min = DsSpacing.touchTarget).widthIn(min = DsSpacing.touchTarget, max = 210.dp)
+                                        .clickable { onOpenReference(reference) }
+                                        .semantics(mergeDescendants = true) { contentDescription = openLabel }
+                                        .padding(horizontal = DsSpacing.small),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(DsSpacing.small),
+                                ) {
+                                    Icon(referenceKindIcon(reference.kind), null, Modifier.size(18.dp), tint = colors.labelSecondary)
+                                    Text(technicalDisplay(reference.label), maxLines = 1, overflow = TextOverflow.Ellipsis,
+                                        style = DsType.small13, color = colors.labelSecondary)
+                                }
+                                DsIconButton(Icons.Filled.Close, stringResource(R.string.ux_b_remove_reference, reference.label), {
+                                    onDraftChange(draft.removeRange(reference.start, reference.end))
+                                    onCursorChange(reference.start)
+                                })
+                            }
+                        }
+                    }
+                }
+                TextField(
+                    value = editor,
+                    onValueChange = {
+                        val edited = atomicReferenceEdit(editor.text, it, references)
+                        editor = edited
+                        onDraftChange(edited.text)
+                        onCursorChange(edited.selection.end)
                     },
+                    visualTransformation = remember(references, colors.accent, colors.accentTertiary) {
+                        ReferenceTransformation(references, androidx.compose.ui.text.SpanStyle(color = colors.accent, background = colors.accentTertiary))
+                    },
+                    // Measure the controls first, then give the editor the remaining height. With
+                    // unbounded height, omit weight so the editor keeps its natural line height.
+                    modifier = Modifier
+                        .then(if (boundedHeight) Modifier.weight(1f, fill = false) else Modifier)
+                        .fillMaxWidth().onPreviewKeyEvent { event ->
+                        if (event.key == Key.Enter && (event.isCtrlPressed || event.isMetaPressed)) {
+                            if (event.type == KeyEventType.KeyUp && canSend) {
+                                val text = currentDraft
+                                currentOnDraftChange("")
+                                currentOnSend(text)
+                            }
+                            true
+                        } else false
+                    },
+                    // No `keyboardActions` here. The field is multi-line, so it carries the default IME
+                    // action and the on-screen return key inserts a newline — which means an
+                    // `onSend` action could never fire, and the one that used to sit here never did.
+                    // The send key is the button; Ctrl/Cmd+Enter above is the shortcut.
+                    enabled = enabled,
+                    placeholder = {
+                        Text(
+                            stringResource(R.string.chat_composer_hint),
+                            style = DsType.std14,
+                            color = colors.labelTertiary,
+                        )
+                    },
+                    minLines = 1,
+                    maxLines = 8,
+                    textStyle = DsType.std14,
+                    colors = TextFieldDefaults.colors(
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        disabledContainerColor = Color.Transparent,
+                        focusedIndicatorColor = Color.Transparent,
+                        unfocusedIndicatorColor = Color.Transparent,
+                        disabledIndicatorColor = Color.Transparent,
+                        cursorColor = colors.accent,
+                        focusedTextColor = colors.labelPrimary,
+                        unfocusedTextColor = colors.labelPrimary,
+                    ),
                 )
 
-                AnimatedVisibility(
-                    visible = running,
-                    enter = fadeIn(DsAnimations.fade) + scaleIn(initialScale = 0.85f),
-                    exit = fadeOut(DsAnimations.fade) + scaleOut(targetScale = 0.85f),
+                if (preparing) Text(stringResource(R.string.photos_preparing), style = DsType.caption11)
+                AnimatedVisibility(visible = attachments.isNotEmpty()) {
+                    AttachmentStrip(attachments, onRemoveAttachment, onRetryAttachment)
+                }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
+                    horizontalArrangement = Arrangement.spacedBy(DsSpacing.compact),
                 ) {
                     CircleAction(
-                        icon = null,
-                        description = stringResource(R.string.chat_composer_stop),
-                        size = 36,
-                        background = colors.error,
-                        tint = Color.White,
-                        enabled = true,
-                        onClick = {
-                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                            onStop()
-                        },
-                    ) {
-                        Box(
-                            Modifier
-                                .size(11.dp)
-                                .clip(RoundedCornerShape(3.dp))
-                                .background(Color.White),
+                        icon = Icons.Filled.Add,
+                        description = stringResource(R.string.chat_composer_commands),
+                        size = 30,
+                        background = colors.hoverSolid,
+                        tint = colors.labelPrimary,
+                        enabled = enabled,
+                        onClick = onOpenSheet,
+                    )
+
+                    CircleAction(
+                        icon = FeatherIcons.AtSign,
+                        description = stringResource(R.string.harness_add_reference),
+                        size = 30,
+                        background = colors.hoverSolid,
+                        tint = colors.labelPrimary,
+                        enabled = enabled,
+                        onClick = onAddReference,
+                    )
+
+                    Box(Modifier.weight(1f)) {
+                        PermissionChip(
+                            select = permissions,
+                            pending = pendingPermission,
+                            enabled = enabled,
+                            onPick = onPermissionPick,
                         )
+                    }
+
+                    ContextMeter(contextBreakdown, contextPressure)
+
+                    // Send is always present; stop joins it while a turn runs.
+                    //
+                    // These used to share one slot, swapping on `running`, which meant a running
+                    // session offered no way to send at all — the Queue and Steer modes in the + sheet
+                    // were unreachable from the phone, and the on-screen return key inserts a newline,
+                    // so there was nothing else to press. The host has always admitted
+                    // `session/prompt` with `mode: queue|steer` mid-turn; only the button was missing.
+                    //
+                    // Stop keeps the right-hand position it had, so the gesture for stopping a turn is
+                    // where it always was and send appears beside it rather than under the thumb
+                    // already reaching for stop.
+                    CircleAction(
+                        icon = Icons.Filled.ArrowUpward,
+                        description = stringResource(R.string.chat_composer_send),
+                        size = 40,
+                        background = if (canSend) colors.buttonInfoFill else colors.buttonPrimaryDimmed,
+                        tint = if (canSend) Color.White else colors.labelTertiary,
+                        enabled = canSend,
+                        onClick = {
+                            val text = currentDraft
+                            currentOnDraftChange("")
+                            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                            currentOnSend(text)
+                        },
+                    )
+
+                    AnimatedVisibility(
+                        visible = running,
+                        enter = fadeIn(DsAnimations.fade) + scaleIn(initialScale = 0.85f),
+                        exit = fadeOut(DsAnimations.fade) + scaleOut(targetScale = 0.85f),
+                    ) {
+                        CircleAction(
+                            icon = null,
+                            description = stringResource(R.string.chat_composer_stop),
+                            size = 40,
+                            background = colors.error,
+                            tint = Color.White,
+                            enabled = true,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                                onStop()
+                            },
+                        ) {
+                            Box(
+                                Modifier
+                                    .size(11.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color.White),
+                            )
+                        }
                     }
                 }
             }

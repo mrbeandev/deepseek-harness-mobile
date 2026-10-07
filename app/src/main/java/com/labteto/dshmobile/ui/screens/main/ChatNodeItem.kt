@@ -300,6 +300,9 @@ private fun AssistantMessage(node: AssistantMessageNode, context: ChatNodeContex
     // so `running` is still true for a frame. Without this the last thing the user sees after
     // tapping stop is the answer apparently still being written.
     val streaming = context.running && isLast && !node.interrupted
+    val knownToolCallIds = remember(context.nodes) {
+        context.nodes.filterIsInstance<ToolCallNode>().mapTo(mutableSetOf()) { it.callId }
+    }
     val reasoningExpanded = remember(node.seq) { mutableStateMapOf<Int, Boolean>() }
     var actionsVisible by remember(node.seq) { mutableStateOf(false) }
 
@@ -325,9 +328,13 @@ private fun AssistantMessage(node: AssistantMessageNode, context: ChatNodeContex
                         MarkdownText(block.text.orEmpty())
                     }
                 }
-                // Tool calls arrive as their own nodes and render as cards; the inline block is a
-                // duplicate reference, so it stays quiet here.
-                "tool-call", "tool-result" -> Unit
+                // Show partial arguments until the durable tool card takes over. The list filter
+                // uses this same predicate so a tool-only streaming message can reach this row.
+                "tool-call" -> if (node.showsToolPreview(block, context.running, knownToolCallIds)) {
+                    val progress = toolRowModel(block.toolName.orEmpty(), block.argumentsJson, context.cwd)
+                    Text(listOfNotNull(progress.title, progress.summary).joinToString(" · "), style = DsType.small13, color = colors.labelSecondary)
+                }
+                "tool-result" -> Unit
                 "image" -> parseImageRef(block)?.let { ref ->
                     AttachmentImage(
                         attachmentId = ref.attachmentId,

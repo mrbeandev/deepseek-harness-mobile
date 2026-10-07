@@ -1,6 +1,7 @@
 package com.labteto.dshmobile.ui.screens.main
 
 import com.labteto.dshmobile.core.session.AssistantMessageNode
+import com.labteto.dshmobile.core.session.ChatBlock
 import com.labteto.dshmobile.core.session.ChatNode
 import com.labteto.dshmobile.core.session.CommandNode
 import com.labteto.dshmobile.core.session.CompactionNode
@@ -48,7 +49,23 @@ internal fun UserMessageNode.displayText(): String = blocks
     .joinToString("\n") { it.text.orEmpty() }
     .ifBlank { previewText }
 
-internal fun ChatNode.rendersContent(): Boolean = when (this) {
+/** The list filter and renderer share the provisional-tool rule to avoid hiding or duplicating it. */
+internal fun AssistantMessageNode.showsToolPreview(
+    block: ChatBlock,
+    running: Boolean,
+    knownToolCallIds: Set<String>,
+): Boolean = streaming && running && !interrupted && block.kind == "tool-call" &&
+    block.toolCallId !in knownToolCallIds
+
+internal fun renderableChatNodes(nodes: List<ChatNode>, running: Boolean): List<ChatNode> {
+    val knownToolCallIds = nodes.filterIsInstance<ToolCallNode>().mapTo(mutableSetOf()) { it.callId }
+    return nodes.filter { it.rendersContent(running, knownToolCallIds) }
+}
+
+internal fun ChatNode.rendersContent(
+    running: Boolean = false,
+    knownToolCallIds: Set<String> = emptySet(),
+): Boolean = when (this) {
     // Structure, not content.
     is TurnStartNode -> false
     // Rendered inside the matching call's card.
@@ -63,8 +80,9 @@ internal fun ChatNode.rendersContent(): Boolean = when (this) {
     is UserMessageNode -> blocks.any { it.kind == "image" } || displayText().isNotBlank()
     is AssistantMessageNode -> interrupted || blocks.any { block ->
         when (block.kind) {
-            // Tool calls arrive as their own nodes; the inline block is a duplicate reference.
-            "tool-call", "tool-result" -> false
+            // Before the durable call arrives, the provisional block is the argument preview.
+            "tool-call" -> showsToolPreview(block, running, knownToolCallIds)
+            "tool-result" -> false
             "text" -> !block.text.isNullOrBlank()
             "reasoning", "image" -> true
             else -> block.text != null

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -53,6 +54,7 @@ fun DsButton(
     variant: DsButtonVariant = DsButtonVariant.Primary,
     size: DsButtonSize = DsButtonSize.Normal,
     icon: ImageVector? = null,
+    allowWrap: Boolean = false,
 ) {
     val colors = DsTheme.colors
     val interaction = remember { MutableInteractionSource() }
@@ -91,7 +93,7 @@ fun DsButton(
     Surface(
         onClick = onClick,
         modifier = modifier
-            .height(if (normal) 36.dp else 28.dp)
+            .then(if (allowWrap) Modifier.heightIn(min = 48.dp) else Modifier.height(if (normal) 36.dp else 28.dp))
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -108,7 +110,8 @@ fun DsButton(
             // offered, which pushed the button itself out to full width whatever the caller asked
             // for — so any row of buttons rendered the first one and squeezed the rest to nothing.
             // A button that wants to span its parent says so through `modifier`, as several do.
-            modifier = Modifier.fillMaxHeight().padding(horizontal = if (normal) 16.dp else 12.dp),
+            modifier = if (allowWrap) Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                else Modifier.fillMaxHeight().padding(horizontal = if (normal) 16.dp else 12.dp),
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -126,7 +129,7 @@ fun DsButton(
                     text,
                     style = if (normal) DsType.std14Strong else DsType.small13Strong,
                     color = contentColor,
-                    maxLines = 1,
+                    maxLines = if (allowWrap) Int.MAX_VALUE else 1,
                 )
             }
         }

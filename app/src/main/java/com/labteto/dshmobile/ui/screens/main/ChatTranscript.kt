@@ -104,8 +104,8 @@ internal fun ChatTranscript(
     //
     // Reversed here rather than at the call site: the fold's natural order is oldest-first, and
     // that is the order every other reader of `nodes` wants.
-    val rows = remember(conversation?.nodes) {
-        conversation?.nodes.orEmpty().filter { it.rendersContent() }.asReversed()
+    val rows = remember(conversation?.nodes, context.running) {
+        renderableChatNodes(conversation?.nodes.orEmpty(), context.running).asReversed()
     }
     val hasMore = conversation?.hasMore == true
     val itemCount = rows.size + if (hasMore) 1 else 0

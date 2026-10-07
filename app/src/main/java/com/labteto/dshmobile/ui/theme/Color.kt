@@ -114,6 +114,8 @@ object DsLight {
     val successSecondary = Ds.Green400
     val successTertiary = Ds.Green100
     val warnLabel = Ds.Amber600
+    // Small warning text on light surfaces; keep warning accents unchanged.
+    val warnText = Color(0xFF9C5700)
     val warn = Ds.Amber500
     val warnSecondary = Ds.Amber400
     val warnTertiary = Ds.Amber100
@@ -181,6 +183,7 @@ object DsDark {
     val successSecondary = Ds.Green400
     val successTertiary = Ds.Green900
     val warnLabel = Ds.Amber600
+    val warnText = warnLabel
     val warn = Ds.Amber500
     val warnSecondary = Ds.Amber400
     val warnTertiary = Ds.Amber900
