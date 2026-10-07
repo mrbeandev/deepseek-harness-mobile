@@ -285,13 +285,20 @@ its completed receipt; it proves reattachment without duplication, not replay of
 
 ## Local delivery
 
-- Final debug APK: `build/delivery/DSH-Mobile-0.13.0-debug.apk`, 24,150,310 bytes.
-  Source APK, delivery APK and checksum file agreed after the final connected tests.
-- Final SHA-256:
+- Device-verified debug APK (UX checks and the 20 connected tests): SHA-256
+  `3432e93b5e97728d9f46c65d1433f694e8c0d2dd37c449a3da81f642e2fa508f`.
+- After that, four PR review findings were fixed: timed questions now mark their session
+  as needing action, a plugin install only blocks its own host, relay discovery keeps a
+  proxy prefix for pairing, and the last opened session is remembered per full endpoint.
+  Core was unchanged. The JVM suite then passed 569 tests with the same 3 optional skips,
+  lint stayed at 0 errors and 149 warnings, and CI's build and conformance jobs passed.
+- Final debug APK: `build/delivery/DSH-Mobile-0.13.0-debug.apk`, 24,150,310 bytes, SHA-256:
 
   ```text
-  3432e93b5e97728d9f46c65d1433f694e8c0d2dd37c449a3da81f642e2fa508f
+  cef05e370f630f89cc562fc25fecf6c6a52ddc1315fd695ef3de2d20b9053a5d
   ```
+
+  The public release APK is built and signed separately by the tag workflow.
 
 - Checksum: `build/delivery/SHA256SUMS-0.13.0.txt`.
   Archived JUnit XML and lint XML live under `build/validation-0.13.0/`, with final
