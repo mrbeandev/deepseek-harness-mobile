@@ -39,6 +39,8 @@ class HarnessProcess private constructor(
     private val home: File,
     private val workspace: File,
     private val model: MockModel?,
+    private val log: ProcessLog,
+    private val reader: Thread,
 ) : AutoCloseable {
 
     /** A disposable directory the harness may use as a session workspace. */
@@ -49,6 +51,8 @@ class HarnessProcess private constructor(
         process.destroy()
         if (!process.waitFor(GRACE_SECONDS, TimeUnit.SECONDS)) process.destroyForcibly()
         children.asReversed().forEach { if (it.isAlive) it.destroyForcibly() }
+        reader.join(5000)
+        log.write()
         model?.close()
         home.deleteRecursively()
         workspace.deleteRecursively()
@@ -181,8 +185,10 @@ class HarnessProcess private constructor(
             val process = builder.start()
             val launchUrl = AtomicReference<String>()
             val bootLog = java.util.concurrent.CopyOnWriteArrayList<String>()
+            val log = ProcessLog("harness")
             val reader = Thread {
                 process.inputStream.bufferedReader().forEachLine { line ->
+                    log.append(line)
                     bootLog.add(line.replace(Regex("token=[A-Za-z0-9_-]+"), "token=[redacted]"))
                     if (bootLog.size > 40) bootLog.removeAt(0)
                     READY_LINE.find(line)?.let { launchUrl.compareAndSet(null, it.groupValues[1]) }
@@ -195,6 +201,7 @@ class HarnessProcess private constructor(
             while (launchUrl.get() == null && System.nanoTime() < deadline) {
                 if (!process.isAlive) {
                     reader.join(1000)
+                    log.write()
                     model?.close(); home.deleteRecursively(); workspace.deleteRecursively()
                     error("harness exited before announcing itself: " + bootLog.joinToString("\n"))
                 }
@@ -203,6 +210,9 @@ class HarnessProcess private constructor(
             val url = launchUrl.get()
             if (url == null) {
                 process.destroyForcibly()
+                reader.join(5000)
+                log.write()
+                model?.close()
                 home.deleteRecursively()
                 workspace.deleteRecursively()
                 error("harness did not print its launch line within ${READY_TIMEOUT_SECONDS}s")
@@ -217,6 +227,8 @@ class HarnessProcess private constructor(
                 home = home,
                 workspace = workspace,
                 model = model,
+                log = log,
+                reader = reader,
             )
         }
 

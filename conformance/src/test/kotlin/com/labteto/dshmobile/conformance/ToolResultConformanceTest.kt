@@ -111,7 +111,7 @@ class ToolResultConformanceTest {
 
         val nodes = EventFold(sessionId).fold(events.sortedBy { it.seq }.distinctBy { it.seq }).nodes
         val call = nodes.filterIsInstance<ToolCallNode>().singleOrNull { it.name == TOOL }
-            ?: error("no call to $TOOL in ${events.map { it.type }}")
+            ?: error("no call to $TOOL in ${events.map { it.type }}; turn/end: ${events.filter { it.type == "turn/end" }.map { it.data }}")
         val result = nodes.filterIsInstance<ToolResultNode>().singleOrNull()
             ?: error("no single tool result in ${events.map { it.type }}")
         assertEquals("the result names the call it answers", call.callId, result.callId)
