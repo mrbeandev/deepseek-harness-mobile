@@ -91,12 +91,24 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 - 11 languages — English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский,
   اردو, ไทย (RTL aware).
 
+### Added in 0.13.0
+
+- Automation catalog, timing edits, delivery history and session shortcuts.
+- Plugin installation, updates, toggles, removal, progress and recovery. Create plugin stages
+  an unsent draft with the Creator preset when the host offers it.
+- Timed questions, continued replies, saved answer drafts and reopenable plans.
+- Draft text and file, folder and session references saved across app restarts.
+- Model search, YAML document properties and multiline goal editing.
+- Reverse-proxy path support and tool argument previews while the model is writing.
+
 ## Requirements
 
 - Android 8.0+ (minSdk 26).
 - A running [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-  at `0.2.0-rc.1` for DSH Mobile `0.12.2`; `0.1.7-rc.x` and `0.1.6-alpha.x` still work.
-  See [compatibility](docs/COMPATIBILITY.md) and [validation results](docs/VALIDATION-0.11.0.md).
+  at `0.2.1-alpha.1` for the DSH Mobile `0.13.0` baseline. Existing protocol fallbacks remain
+  for `0.2.0-rc.1`, `0.1.7-rc.x` and `0.1.6-alpha.x`; new management features need host support.
+  See [compatibility](docs/COMPATIBILITY.md) and the [0.13.0 validation status](docs/VALIDATION-0.13.0.md)
+  for what has been checked on this revision.
 
 ## Quick start
 

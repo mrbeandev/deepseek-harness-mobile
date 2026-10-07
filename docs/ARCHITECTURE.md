@@ -1,6 +1,6 @@
 # Architecture
 
-DSH Mobile is a three-module Gradle project (Kotlin 2.0, Compose, Hilt).
+DSH Mobile is a four-module Gradle project (Kotlin 2.0, Compose, Hilt).
 
 ```
 core/           pure JVM — no Android imports
@@ -60,6 +60,7 @@ file chips with upload state) · Docks · TrajectoryTab · Sheet*.kt (commands,
 models, presets, subagents, permission) · ChatProjections (defensive readers).
 
 mock-harness/   Ktor implementation of the /api protocol for tests
+conformance/    JVM tests against a real harness checkout and a deterministic model
 tools/capture/  Node recorder of real harness traffic → conformance fixtures
 ```
 
@@ -86,7 +87,8 @@ tools/capture/  Node recorder of real harness traffic → conformance fixtures
    else the most recently active one. Reconnects keep whatever was open.
 3. Screens observe `StateFlow`s and render; user actions go back through
    `SessionStore` → `DshApiClient` (`POST /api/<namespace>/<method>`), and
-   pending approvals/questions are answered through `$events/result`. A
+   pending approvals and foreground questions are answered through `$events/result`;
+   continued questions use `userQuestions/answer`. A
    picked file is streamed to `/api/session/uploadFileBinary` as soon as it is
    picked, and the message cites the receipt that came back.
 4. `NotificationObserver` classifies host events into completion events and
@@ -110,4 +112,23 @@ tools/capture/  Node recorder of real harness traffic → conformance fixtures
   sends no render intent.
 - Transient assistant rows never touch the durable cursor, never count as a
   gap, and are never paged; only the settlement is history.
-- Protocol baseline: harness `0.2.0-rc.1` (`core.DshCore.PROTOCOL_BASELINE`).
+- Protocol baseline: harness `0.2.1-alpha.1` (`core.DshCore.PROTOCOL_BASELINE`).
+  `DshCore.PROTOCOL_COMMIT` pins `5badb15009ae1756c3afe0ae0cef1faafc290ccc`;
+  `core/src/test/resources/protocol/5badb15.json` carries the same baseline.
+
+## 0.13.0 state and management
+
+- `HarnessUrl` resolves routes under a host's configured proxy path. `HostConfig`
+  and `HostsStore` preserve that path; host identity includes the scheme and path.
+- `Harness021Api` supplies Automation, plugin management and session-reference calls.
+  `HarnessFeatures` edits existing tasks with their observed storage record and stages
+  new-task drafts. `PluginManagerScreen` exposes package and plugin controls.
+- `SessionStore` owns `QuestionSessions` and `PluginOperations`, so closing a screen
+  does not discard a live question claim or restart an installation. Question projections
+  determine whether a call is open, continued or settled. Install request IDs persist
+  for recovery through `waitForInstall`; a missing result stays unknown.
+- `ComposerRepository` saves text and structured references in local preferences,
+  keyed by host and session. `ModernQuestions` separately saves answer drafts by host,
+  session and call ID. Pending attachments and preview-panel state remain in memory.
+- `PartialArguments` extracts display text from incomplete tool-call JSON.
+  `DocumentFrontmatter` uses bounded, safe YAML parsing for Markdown previews.

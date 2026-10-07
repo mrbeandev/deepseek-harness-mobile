@@ -85,9 +85,10 @@ harness，而不是对着一个敞开的端口。参见
 
 - Android 8.0 及以上（minSdk 26）。
 - 一个正在运行的 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-  （已针对 `0.1.3-alpha.1` 测试）。**0.10.0 需要 harness 0.1.3** —— 该版本不再把回复的增量写入日志，
-  改为通过 App 必须主动订阅的实时流传输，因此 App 与 harness 必须同时升级：旧版 App 在 0.1.3 上看不到
-  正在生成的回答，而本版 App 在 0.1.2 上无法执行斜杠命令。参见 [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)。
+  `0.2.1-alpha.1`，这是 DSH Mobile `0.13.0` 的协议基线。
+  App 保留了对 `0.2.0-rc.1`、`0.1.7-rc.x` 和 `0.1.6-alpha.x` 的旧协议兼容处理；
+  新增管理功能需要 harness 提供支持。已验证的范围请参见
+  [兼容性说明](docs/COMPATIBILITY.md)和 [0.13.0 验证记录](docs/VALIDATION-0.13.0.md)。
 
 ## 快速开始
 
