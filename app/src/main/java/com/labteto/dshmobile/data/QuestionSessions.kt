@@ -20,7 +20,16 @@ data class QuestionCardState(
     val ready: Boolean = false,
     val queued: Boolean = false,
     val answers: List<AskUserQuestionAnswerItem>? = null,
+    val needsAction: Boolean = true,
 ) { val key: String get() = "$sessionId/$callId" }
+
+/** Session rows combine these kinds with legacy requests without sharing their lifetimes. */
+internal fun List<QuestionCardState>.pendingQuestionKinds(): Map<String, Set<String>> =
+    filter { it.state == "open" && it.needsAction }.groupBy { it.sessionId }.mapValues { (_, cards) ->
+        cards.map { card ->
+            if (card.questions.any { it.intent is AskUserQuestionIntent.PlanReview }) "plan-review" else "question"
+        }.toSet()
+    }
 
 /** Owns live claims across navigation and reconciles late answers against durable projections. */
 class QuestionSessions(
@@ -83,7 +92,7 @@ class QuestionSessions(
             requests.remove(key)?.job?.cancel()
             val old = _cards.value.firstOrNull { it.key == key }
             val card = (old ?: QuestionCardState(sessionId, wait.callId, request.questions))
-                .copy(state = "open", ready = !wait.timed, queued = false, answers = null)
+                .copy(state = "open", ready = !wait.timed, queued = false, answers = null, needsAction = true)
             _cards.value = _cards.value.filterNot { it.key == key } + card
             val job = if (!wait.timed) null else scope.launch(start = CoroutineStart.LAZY) {
                 var stream: RemoteStream? = null
@@ -131,6 +140,7 @@ class QuestionSessions(
                     onCapability(clientId, RpcResult.Err(failure))
                     updateClaim { it.copy(ready = false, remainingMs = null) }
                     if (clientId == generation() && failure.code == "capability-unavailable") {
+                        updateClaim { it.copy(needsAction = false) }
                         onUnavailable(sessionId, eventId, request.questions)
                     }
                 }
@@ -151,7 +161,7 @@ class QuestionSessions(
     fun cancelled(eventId: String) = synchronized(lock) {
         val entry = requests.entries.firstOrNull { it.value.eventId == eventId } ?: return@synchronized
         requests.remove(entry.key)?.job?.cancel()
-        change(entry.key) { it.copy(ready = false, remainingMs = null) }
+        change(entry.key) { it.copy(ready = false, remainingMs = null, needsAction = false) }
     }
 
     fun projection(sessionId: String, seq: Int, value: JsonElement) {
@@ -247,7 +257,7 @@ class QuestionSessions(
                 // Sending an event result is not evidence that we won another client's answer.
                 synchronized(lock) {
                     if (epoch == answeringEpoch && requests[key] == request) change(key) {
-                        if (it.state == "open") it.copy(ready = false) else it
+                        if (it.state == "open") it.copy(ready = false, needsAction = false) else it
                     }
                 }
                 null

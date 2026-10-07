@@ -403,19 +403,7 @@ class DiscoveryEngine @Inject constructor(
                 if (!open) return@async
                 val relay = runCatching { probeRelay(ip, port, ProbeTimeouts.Sweep) }.getOrNull()
                     ?: return@async
-                val found = DiscoveredHost(
-                    // Not `ip` and `port`: a relay found through a redirect answers somewhere else,
-                    // and the card has to name the listener that will take the pairing.
-                    host = relay.host ?: ip,
-                    port = relay.port ?: port,
-                    // A relay never answers `host.describe` to an unpaired device, so there is
-                    // nothing to cache. The card offers pairing, not a Connect button.
-                    description = null,
-                    useTls = relay.useTls,
-                    fingerprint = relay.fingerprint,
-                    isRelay = true,
-                    hostRefused = relay.hostRefused,
-                )
+                val found = relay.discoveredHost(ip, port)
                 discovered.add(found)
                 onFound(found)
             }
@@ -477,4 +465,17 @@ data class RelayProbe(
     val useTls: Boolean get() = parsed?.scheme == "https"
     val host: String? get() = parsed?.host
     val port: Int? get() = parsed?.port
+    val basePath: String get() = parsed?.encodedPath?.trimEnd('/').orEmpty()
+
+    /** Pair at the complete redirected endpoint, including its proxy root. */
+    internal fun discoveredHost(fallbackHost: String, fallbackPort: Int) = DiscoveredHost(
+        host = host ?: fallbackHost,
+        port = port ?: fallbackPort,
+        description = null,
+        useTls = useTls,
+        basePath = basePath,
+        fingerprint = fingerprint,
+        isRelay = true,
+        hostRefused = hostRefused,
+    )
 }

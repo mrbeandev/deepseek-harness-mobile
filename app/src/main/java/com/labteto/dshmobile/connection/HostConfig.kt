@@ -47,7 +47,7 @@ data class HostConfig(
     /** Epoch millis the device token expires, as the relay reported it at pairing. */
     val relayTokenExpiresAt: Long = 0L,
 ) {
-    /** Bare `host:port` — the identity key and display form, deliberately scheme-free. */
+    /** Endpoint identity and display form, including TLS and the reverse-proxy root. */
     val authority: String get() = endpointKey(host, port, useTls, basePath)
     val baseUrl: String get() = harnessBaseUrl(host, port, useTls, basePath)
 
@@ -66,6 +66,10 @@ data class HostConfig(
     /** Whether traffic to this endpoint travels in the clear. */
     val isPlaintext: Boolean get() = !useTls
 }
+
+/** Read endpoint-specific history first, retaining the pre-prefix key as an upgrade fallback. */
+internal fun HostConfig.rememberedSession(saved: Map<String, String>): String? =
+    saved[baseUrl] ?: saved["$host:$port"]
 
 /**
  * A harness found by the active LAN scan.

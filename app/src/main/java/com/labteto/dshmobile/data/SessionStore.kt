@@ -560,6 +560,7 @@ class SessionStore @Inject constructor(
     private val workspaceOrder = ArrayList<String>()
     private var archived = emptySet<String>()
     private val pendingKinds = HashMap<String, MutableSet<String>>()
+    private var modernQuestionKinds: Map<String, Set<String>> = emptyMap()
 
     // Pending Remote Event waterfalls this store can answer. Keyed by the frame's `eventId`,
     // which is both what an answer names and what a `cancel` frame withdraws — 0.1.2 mints no
@@ -613,6 +614,17 @@ class SessionStore @Inject constructor(
     private data class ProjectionValue(val seq: Int, val value: JsonElement)
 
     init {
+        scope.launch {
+            questionSessions.cards.collect { cards ->
+                val kinds = cards.pendingQuestionKinds()
+                synchronized(lock) {
+                    if (modernQuestionKinds != kinds) {
+                        modernQuestionKinds = kinds
+                        emitSessionsLocked()
+                    }
+                }
+            }
+        }
         observeConnection()
         observeEvents()
         observePermissionSettlement()
@@ -777,7 +789,7 @@ class SessionStore @Inject constructor(
      * Returns null when there is nothing worth opening, which leaves the empty hero on screen.
      */
     private suspend fun resolveInitialSession(): String? {
-        val remembered = hostKey()?.let { hostsStore.lastSessionId(it) }
+        val remembered = connectionManager.state.value.host?.let { hostsStore.lastSessionId(it) }
         val (rows, workspaces, archivedNow) = synchronized(lock) {
             Triple(
                 sessionRows.values.toList(),
@@ -788,9 +800,9 @@ class SessionStore @Inject constructor(
         return pickInitialSession(rows, workspaces, archivedNow, remembered)
     }
 
-    /** `"host:port"` for the connected harness — session ids are only meaningful within one host. */
+    /** Full endpoint identity: sessions behind different proxy roots belong to different hosts. */
     private fun hostKey(): String? =
-        connectionManager.state.value.host?.let { "${it.host}:${it.port}" }
+        connectionManager.state.value.host?.baseUrl
 
     // ------------------------------------------------------------------ host event frames
     /**
@@ -1421,7 +1433,9 @@ class SessionStore @Inject constructor(
 
     private fun emitSessionsLocked() {
         val rows = sessionRows.values.map { row ->
-            row.copy(pendingInteraction = pendingInteractionOf(pendingKinds[row.sessionId]))
+            row.copy(pendingInteraction = pendingInteractionOf(
+                pendingKinds[row.sessionId].orEmpty() + modernQuestionKinds[row.sessionId].orEmpty(),
+            ))
         }
         _sessions.value = rows
     }

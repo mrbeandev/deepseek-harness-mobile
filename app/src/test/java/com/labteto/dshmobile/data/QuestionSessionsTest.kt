@@ -38,6 +38,54 @@ class QuestionSessionsTest {
     private val questions = listOf(AskUserQuestionItem("q", "Choose", options = listOf(AskUserQuestionOption("Yes"))))
     private fun view(state: String) = WireJson.encodeToJsonElement(UserQuestionsView.serializer(), UserQuestionsView(active = listOf(ContinuedQuestion("call", questions, state))))
 
+    @Test fun `modern pending kinds track unopened sessions through every completion path`() = runTest {
+        val api = DshApiClient(Transport())
+        val owner = QuestionSessions(backgroundScope, { api }, { null }, { "generation" })
+        fun request(call: String, items: List<AskUserQuestionItem> = questions) =
+            owner.requested("unopened", "event-$call", AskUserQuestionRequestEvent(items, QuestionWait(call, false)))
+        fun kinds() = owner.cards.value.pendingQuestionKinds()["unopened"].orEmpty()
+        request("answer")
+        request("answer") // Re-delivery is still one pending call.
+        assertEquals(1, owner.cards.value.size)
+        assertEquals(setOf("question"), kinds())
+        request("cancel")
+        owner.answer("unopened/answer", AskUserQuestionAnswer(emptyList()))
+        assertEquals(setOf("question"), kinds()) // Another call is still open.
+        owner.cancelled("event-cancel")
+        assertTrue(kinds().isEmpty())
+        val plan = questions.map { it.copy(intent = AskUserQuestionIntent.PlanReview("Yes")) }
+        request("plan", plan)
+        assertEquals(setOf("plan-review"), kinds())
+        request("ordinary")
+        assertEquals(setOf("question", "plan-review"), kinds())
+        owner.projection("unopened", 1, WireJson.encodeToJsonElement(UserQuestionsView.serializer(),
+            UserQuestionsView(active = listOf(ContinuedQuestion("plan", plan, "continued")))))
+        assertEquals(setOf("question"), kinds())
+        owner.projection("unopened", 2, WireJson.encodeToJsonElement(UserQuestionsView.serializer(),
+            UserQuestionsView(settled = listOf(SettledQuestion("ordinary", emptyList())))))
+        assertTrue(kinds().isEmpty())
+        request("removed")
+        owner.removeSession("unopened")
+        assertTrue(kinds().isEmpty())
+        request("reset")
+        owner.reset()
+        assertTrue(owner.cards.value.pendingQuestionKinds().isEmpty())
+    }
+
+    @Test fun `timed question marks session pending before claim attaches and clears on continuation`() = runTest {
+        val api = DshApiClient(Transport())
+        val mux = mux(500)
+        val owner = QuestionSessions(backgroundScope, { api }, { mux }, { "generation" }, { testScheduler.currentTime })
+        owner.requested("unopened", "event", AskUserQuestionRequestEvent(questions, QuestionWait("call", true)))
+        assertEquals(setOf("question"), owner.cards.value.pendingQuestionKinds()["unopened"])
+        runCurrent()
+        owner.projection("unopened", 1, view("continued"))
+        assertTrue(owner.cards.value.pendingQuestionKinds().isEmpty())
+        owner.projection("unopened", 0, view("open"))
+        assertTrue(owner.cards.value.pendingQuestionKinds().isEmpty())
+        owner.reset(); mux.close()
+    }
+
     @Test fun `settlement before the answer receipt wins and clears a queued reply`() = runTest {
         val receipt = CompletableDeferred<Unit>()
         val api = DshApiClient(Transport(receipt))

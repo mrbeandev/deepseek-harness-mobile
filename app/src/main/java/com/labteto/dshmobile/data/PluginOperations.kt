@@ -62,7 +62,7 @@ class PluginOperations(
         preferences?.edit()?.putString("pending", saved.toString())?.remove("host")?.remove("requestId")?.apply()
     }
 
-    private fun busy(): Boolean = _pending.value.any { it.busy }
+    private fun busy(host: String): Boolean = _pending.value.any { it.host == host && it.busy }
 
     /** A new attempt invalidates any late result from a cancelled pre-reconnect waiter. */
     private fun launchAttempt(host: String, id: String, block: suspend (Long) -> Unit) {
@@ -77,7 +77,7 @@ class PluginOperations(
 
     @Synchronized
     fun install(host: String, spec: String, registry: String?, approvedBuilds: List<String>? = null) {
-        if (busy() || !available()) return
+        if (busy(host) || !available()) return
         val id = UUID.randomUUID().toString()
         _pending.value += PluginOperationState(host, id, busy = true, subject = spec, registry = registry)
         persistPending()
@@ -125,7 +125,7 @@ class PluginOperations(
 
     @Synchronized
     fun changed(host: String, result: PluginChangeResult) {
-        if (!busy() && available()) {
+        if (!busy(host) && available()) {
             _state.value = PluginOperationState(host = host, result = result)
         }
     }

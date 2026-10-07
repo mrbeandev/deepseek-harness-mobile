@@ -51,7 +51,7 @@ internal fun PluginManagerScreen(onClose: () -> Unit, onDraftOpened: () -> Unit 
     var loaded by remember(host) { mutableStateOf(false) }
     var error by remember(host) { mutableStateOf<String?>(null) }
     var revision by remember { mutableIntStateOf(0) }
-    val busy = loading || pending.any { it.busy }
+    val busy = loading || pending.any { it.host == host && it.busy }
     val offline = stringResource(R.string.common_offline)
     val creator = stringResource(R.string.harness_creator_draft)
     val current = operation.takeIf { it.host == host }

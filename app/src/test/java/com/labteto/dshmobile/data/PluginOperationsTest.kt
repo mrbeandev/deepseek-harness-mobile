@@ -13,6 +13,24 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class PluginOperationsTest {
+    @Test fun `busy installs only block mutations on their own host`() = runTest {
+        val transport = Transport().apply { gate = CompletableDeferred() }
+        val owner = PluginOperations(backgroundScope, { DshApiClient(transport) })
+        owner.install("host-a", "first", null); runCurrent()
+        owner.changed("host-b", applied)
+        assertEquals("host-b", owner.state.value.host)
+        owner.install("host-b", "second", null); runCurrent()
+        owner.install("host-a", "duplicate", null)
+        owner.install("host-b", "duplicate", null); runCurrent()
+        assertEquals(setOf("host-a", "host-b"), owner.pending.value.map { it.host }.toSet())
+        assertEquals(2, transport.calls.size)
+        assertTrue(owner.pending.value.all { it.busy })
+        assertEquals(2, owner.pending.value.map { it.requestId }.toSet().size)
+        transport.gate!!.complete(Unit); runCurrent()
+        assertEquals(2, owner.pending.value.size)
+        assertTrue(owner.pending.value.all { it.unknown && !it.busy })
+    }
+
     private val applied = PluginChangeResult(true, "applied", "install", "fixture")
     private class Transport : RpcTransport {
         var failInstall = true
