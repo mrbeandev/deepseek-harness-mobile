@@ -29,6 +29,7 @@ internal fun RenameDialog(
     title: String,
     onDismiss: () -> Unit,
     onConfirm: (String) -> Unit,
+    multiline: Boolean = false,
 ) {
     var text by remember(initial) { mutableStateOf(initial) }
     DsDialog(title = title, onDismiss = onDismiss) {
@@ -36,7 +37,8 @@ internal fun RenameDialog(
             value = text,
             onValueChange = { text = it },
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
+            singleLine = !multiline,
+            minLines = if (multiline) 3 else 1,
             placeholder = { Text(title, style = DsType.std14) },
             colors = dialogTextFieldColors(),
         )

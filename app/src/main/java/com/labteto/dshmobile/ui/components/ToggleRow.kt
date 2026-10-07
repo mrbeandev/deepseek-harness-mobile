@@ -1,6 +1,9 @@
 package com.labteto.dshmobile.ui.components
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.semantics.Role
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,13 +29,14 @@ import com.labteto.dshmobile.ui.theme.DsType
  * anything that states its own state and flips on tap belongs here, not in a bespoke card.
  */
 @Composable
-fun ToggleRow(label: String, checked: Boolean, hint: String? = null, onChange: () -> Unit) {
+fun ToggleRow(label: String, checked: Boolean, hint: String? = null, enabled: Boolean = true, onChange: () -> Unit) {
     val colors = DsTheme.colors
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(DsShapes.row)
-            .clickable(onClick = onChange)
+            .heightIn(min = DsSpacing.touchTarget)
+            .toggleable(value = checked, enabled = enabled, role = Role.Switch, onValueChange = { onChange() })
             .padding(vertical = DsSpacing.small),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -42,6 +46,8 @@ fun ToggleRow(label: String, checked: Boolean, hint: String? = null, onChange: (
                 Text(hint, style = DsType.caption11, color = colors.labelCaption)
             }
         }
-        Switch(checked = checked, onCheckedChange = { onChange() })
+        Switch(checked = checked, enabled = enabled, onCheckedChange = null,
+            colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = colors.accent, checkedThumbColor = colors.onAccent,
+                uncheckedTrackColor = colors.bgLayer2, uncheckedBorderColor = colors.borderL2))
     }
 }

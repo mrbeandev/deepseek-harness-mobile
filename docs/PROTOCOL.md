@@ -4,8 +4,8 @@ What DSH Mobile speaks, in one page. Authoritative shapes live in the harness
 repository — `packages/api/*/src/types.ts`,
 `packages/api/gateway/src/stream-protocol.ts`, `packages/llm/llm/src/assistant-stream.ts`
 and `packages/client/file-upload/src/*` — and this document records the
-subset the app implements, against harness **0.2.0-rc.1**. Nothing the app uses
-changed from 0.1.7-rc.2. Where 0.1.7 changed a shape the app still reads the
+subset the app implements, against harness **0.2.1-alpha.1**. New management and
+question surfaces are additive. Where 0.1.7 changed a shape the app still reads the
 0.1.6 one too; [0.12.0 contract additions](#0120-contract-additions-harness-017)
 lists both.
 
@@ -725,3 +725,17 @@ host answers; it never checks a version.
   `kind: cached | sequenced`; the mux accepts a socket only once the host is ready, so a
   socket opened too early is dropped once and the connection loop reconnects; the token
   exchange redirects to `./` instead of `/`, and the client does not follow it anyway.
+
+## 0.13.0 additions (Harness 0.2.1)
+
+The baseline is `0.2.1-alpha.1`, commit
+`5badb15009ae1756c3afe0ae0cef1faafc290ccc`, matching `DshCore`. The source-derived
+fixture is `core/src/test/resources/protocol/5badb15.json`; `4878cda.json` remains
+for the earlier contract. See [validation status](VALIDATION-0.13.0.md) for run results.
+
+- Routes resolve relative to the configured proxy root, including token exchange, RPC, uploads, downloads and the mux. Host identity includes scheme and root path.
+- `schedule/catalog`, `list`, `history`, `update`, `delete` use `{request: ...}` except the argument-free catalog. Timing selectors retain explicit IANA zones and ISO weekdays. Updates echo a complete storage record in `expected`; catalog-only fields are removed. Creation stages a chat draft.
+- `pluginManager/listBundles`, `listPlugins`, `registries`, `inspect`, `installBundle`, `waitForInstall`, `cancelInstall`, `setBundleEnabled`, `setPluginEnabled`, `removeBundle` use the host method parameter names. Bundle toggles use `name`, entry toggles use `id`. Installation defaults to disabled in the manager UI. Actual installed version and application outcome are shown separately. Script approvals name the listed packages explicitly. An absent recovery receipt is unknown, not success. Install IDs persist across process restart; install and recovery requests have no ordinary RPC read timeout.
+- A question request may carry `wait: {callId, timed?}`. Timed requests attach `userQuestions/attachWait` using `agentId` and `callId`, then count the opening `remainingMs` locally. Focus pauses; edits and Take time hold. Closing hides the card. Expiry rejects with `UserQuestionError/ASK_TIMED_OUT` and releases the claim. The projection decides continuation and settlement. `userQuestions/answer` submits later answers; inbox provenance marks queued replies. Requests without `wait` retain the legacy blocking flow.
+- Composer references retain UTF-16 spans, type, target and canonical mention text locally. Submission still uses ordinary text content. File candidates use the file-reference grammar; session candidates supply their canonical mention. Editing through a reference dissolves its metadata. Composer text and references, and question answer drafts, persist in local preferences across app restarts. They are scoped by host and session; questions additionally use call ID. Attachment bytes and upload state are not part of this persisted draft record.
+- YAML frontmatter is decoded with safe constructors and explicit size, nesting and alias bounds. Invalid headers remain visible. Partial JSON argument extraction is display-only and cannot create an executable tool request.

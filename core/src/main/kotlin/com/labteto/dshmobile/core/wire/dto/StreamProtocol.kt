@@ -409,6 +409,7 @@ data class ApprovalRequestEvent(
 @Serializable
 data class AskUserQuestionRequestEvent(
     @SerialName("questions") val questions: List<AskUserQuestionItem> = emptyList(),
+    val wait: QuestionWait? = null,
 )
 
 /**

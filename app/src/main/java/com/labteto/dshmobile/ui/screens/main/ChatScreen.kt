@@ -12,13 +12,16 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
@@ -117,6 +120,7 @@ fun ChatScreen(
     val composer = remember(hostKey, currentSessionId) {
         store.composers.get(ComposerKey(hostKey, currentSessionId.orEmpty()))
     }
+    var referencePicker by remember(composer.key) { mutableStateOf<AtQuery?>(null) }
     var draft by composer::text
     var mode by composer::mode
     var tab by rememberSaveable { mutableStateOf(ChatTab.Chat) }
@@ -414,154 +418,187 @@ fun ChatScreen(
                 },
             )
 
-            AnimatedContent(
-                targetState = tab,
-                transitionSpec = {
-                    val forward = targetState.ordinal > initialState.ordinal
-                    (
-                        slideInHorizontally { width -> if (forward) width / 6 else -width / 6 } +
-                            fadeIn(DsAnimations.fade)
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+                // Keep transcript/question space even with a long draft. On very short screens,
+                // reserve enough for reference chips, a line of text and the fixed action row.
+                val composerMaxHeight = (maxHeight * 0.6f).coerceAtLeast(180.dp)
+                Column(Modifier.fillMaxSize()) {
+                AnimatedContent(
+                    targetState = tab,
+                    transitionSpec = {
+                        val forward = targetState.ordinal > initialState.ordinal
+                        (
+                            slideInHorizontally { width -> if (forward) width / 6 else -width / 6 } +
+                                fadeIn(DsAnimations.fade)
+                            )
+                            .togetherWith(fadeOut(DsAnimations.fade)) using SizeTransform(clip = false)
+                    },
+                    modifier = Modifier.weight(1f),
+                    label = "chatTab",
+                ) { current ->
+                    when (current) {
+                        ChatTab.Chat -> ChatTranscript(
+                            conversation = conversation,
+                            loading = conversation == null && currentSessionId != null,
+                            loadingOlder = loadingOlder,
+                            loadOlderFailed = loadOlderFailed,
+                            context = nodeContext,
+                            listState = chatListState,
+                            onLoadOlder = { scope.launch { store.loadOlder() } },
                         )
-                        .togetherWith(fadeOut(DsAnimations.fade)) using SizeTransform(clip = false)
-                },
-                modifier = Modifier.weight(1f),
-                label = "chatTab",
-            ) { current ->
-                when (current) {
-                    ChatTab.Chat -> ChatTranscript(
-                        conversation = conversation,
-                        loading = conversation == null && currentSessionId != null,
-                        loadingOlder = loadingOlder,
-                        loadOlderFailed = loadOlderFailed,
-                        context = nodeContext,
-                        listState = chatListState,
-                        onLoadOlder = { scope.launch { store.loadOlder() } },
-                    )
-                    ChatTab.Trajectory -> TrajectoryTab(
-                        conversation = conversation,
-                        stats = sessionStats,
-                        usage = tokenUsage,
-                        cwd = currentSession?.cwd,
-                        listState = trajectoryListState,
-                    )
+                        ChatTab.Trajectory -> TrajectoryTab(
+                            conversation = conversation,
+                            stats = sessionStats,
+                            usage = tokenUsage,
+                            cwd = currentSession?.cwd,
+                            listState = trajectoryListState,
+                        )
+                    }
                 }
-            }
 
-            conversation?.let { conv ->
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    parseTodos(conv.projections["todos"])?.let { TodoDock(it) }
-                    parseGoal(conv.projections["goal"])?.let { GoalBar(it, store) }
-                    QueueDock(conv.queue, store)
+                conversation?.let { conv ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        parseTodos(conv.projections["todos"])?.let { TodoDock(it) }
+                        parseGoal(conv.projections["goal"])?.let { GoalBar(it, store) }
+                        QueueDock(conv.queue, store)
+                    }
                 }
-            }
 
-            // Server-initiated requests take over the bottom of the screen: they block the turn,
-            // so burying them behind a scroll would strand the session.
-            val approval = pendingApproval
-            if (approval != null && approval.sessionId == currentSessionId) {
-                // A refusal is said out loud here rather than swallowed, for the reason [refusalOf]
-                // gives: the host's wait — and the tool call behind it — stays open, and a panel
-                // that reported nothing would read as two buttons that do nothing.
-                fun decide(allow: Boolean) = scope.launch {
-                    refusalOf(store.respondApproval(approval.sessionId, approval.approvalId, allow))
-                        ?.let { toast.second(it) }
+                // Server-initiated requests take over the bottom of the screen: they block the turn,
+                // so burying them behind a scroll would strand the session.
+                val approval = pendingApproval
+                if (approval != null && approval.sessionId == currentSessionId) {
+                    // A refusal is said out loud here rather than swallowed, for the reason [refusalOf]
+                    // gives: the host's wait — and the tool call behind it — stays open, and a panel
+                    // that reported nothing would read as two buttons that do nothing.
+                    fun decide(allow: Boolean) = scope.launch {
+                        refusalOf(store.respondApproval(approval.sessionId, approval.approvalId, allow))
+                            ?.let { toast.second(it) }
+                    }
+                    ApprovalPanel(
+                        toolName = approval.toolName,
+                        reason = approval.reason,
+                        onAllow = { decide(true) },
+                        onReject = { decide(false) },
+                    )
                 }
-                ApprovalPanel(
-                    toolName = approval.toolName,
-                    reason = approval.reason,
-                    onAllow = { decide(true) },
-                    onReject = { decide(false) },
-                )
-            }
-            val questions = pendingQuestions
-            if (questions != null && questions.sessionId == currentSessionId) {
-                var planBusy by remember(questions.rpcId) { mutableStateOf(false) }
-                // A plan review rides the question channel but is a different decision, so it gets
-                // the card built for it. The narrowing decides which — and hands back anything the
-                // card could not answer in full, because the card answers one question and the host
-                // refuses an answer batch shorter than the request it resolves.
-                val review = remember(questions.rpcId) { planReviewOf(questions.items) }
-                if (review != null) {
-                    fun settle(block: suspend () -> QuestionOutcome) {
-                        planBusy = true
-                        scope.launch {
-                            refusalOf(block())?.let {
-                                planBusy = false
-                                toast.second(it)
+                val questions = pendingQuestions
+                if (questions != null && questions.sessionId == currentSessionId) {
+                    var planBusy by remember(questions.rpcId) { mutableStateOf(false) }
+                    // A plan review rides the question channel but is a different decision, so it gets
+                    // the card built for it. The narrowing decides which — and hands back anything the
+                    // card could not answer in full, because the card answers one question and the host
+                    // refuses an answer batch shorter than the request it resolves.
+                    val review = remember(questions.rpcId) { planReviewOf(questions.items) }
+                    if (review != null) {
+                        fun settle(block: suspend () -> QuestionOutcome) {
+                            planBusy = true
+                            scope.launch {
+                                refusalOf(block())?.let {
+                                    planBusy = false
+                                    toast.second(it)
+                                }
                             }
                         }
-                    }
-                    fun decide(option: AskUserQuestionOption) = settle {
-                        store.answerQuestions(
-                            questions.sessionId,
-                            AskUserQuestionAnswer(
-                                listOf(AskUserQuestionAnswerItem(review.id, listOf(option.label))),
-                            ),
+                        fun decide(option: AskUserQuestionOption) = settle {
+                            store.answerQuestions(
+                                questions.sessionId,
+                                AskUserQuestionAnswer(
+                                    listOf(AskUserQuestionAnswerItem(review.id, listOf(option.label))),
+                                ),
+                            )
+                        }
+                        PlanReviewPanel(
+                            review = review,
+                            busy = planBusy,
+                            onApprove = { decide(review.approve) },
+                            onDecline = { review.decline?.let { decide(it) } },
+                            // Wanting to talk it over first is not one of the options the asker stated,
+                            // so it ends the request rather than answering it with the refusal.
+                            onDiscuss = {
+                                draft = ""
+                                settle { store.dismissQuestions(questions.sessionId) }
+                            },
+                        )
+                    } else {
+                        QuestionsPanel(
+                            requestKey = questions.rpcId,
+                            questions = questions.items,
+                            onSubmit = { answer ->
+                                refusalOf(store.answerQuestions(questions.sessionId, answer))
+                            },
+                            onDismiss = { refusalOf(store.dismissQuestions(questions.sessionId)) },
                         )
                     }
-                    PlanReviewPanel(
-                        review = review,
-                        busy = planBusy,
-                        onApprove = { decide(review.approve) },
-                        onDecline = { review.decline?.let { decide(it) } },
-                        // Wanting to talk it over first is not one of the options the asker stated,
-                        // so it ends the request rather than answering it with the refusal.
-                        onDiscuss = {
-                            draft = ""
-                            settle { store.dismissQuestions(questions.sessionId) }
-                        },
-                    )
-                } else {
-                    QuestionsPanel(
-                        requestKey = questions.rpcId,
-                        questions = questions.items,
-                        onSubmit = { answer ->
-                            refusalOf(store.answerQuestions(questions.sessionId, answer))
-                        },
-                        onDismiss = { refusalOf(store.dismissQuestions(questions.sessionId)) },
-                    )
+                }
+
+                // Weighted questions are measured after the composer, so long questions cannot
+                // consume its controls. The question area scrolls within its allotted height.
+                ModernQuestions(store, currentSessionId, Modifier.weight(1f, fill = false))
+
+                Composer(
+                    modifier = Modifier.heightIn(max = composerMaxHeight),
+                    references = composer.references,
+                    onAddReference = {
+                        referencePicker = activeReference(draft, composer.selection) ?: AtQuery(composer.selection, composer.selection, "")
+                    },
+                    onOpenReference = { reference ->
+                        if (reference.kind == "session") scope.launch { store.openSession(reference.target) }
+                        else {
+                            val panel = store.panels.get(composer.key)
+                            if (reference.kind == "folder") {
+                                panel.directory = reference.target
+                                panel.section = 0
+                                // Reopening the panel must load this target, not reuse the previous
+                                // directory's cached rows. Its existing launch effect loads null listings.
+                                panel.listing = null
+                            } else panel.open(reference.target)
+                            panelKey = composer.key
+                        }
+                    },
+                    draft = draft,
+                    onDraftChange = { draft = it },
+                    cursor = composer.selection,
+                    onCursorChange = { composer.selection = it; if (draft.take(it).endsWith("@")) referencePicker = activeReference(draft, it) },
+                    attachments = attachments,
+                    onRemoveAttachment = { index -> attachments.removeAt(index) },
+                    onRetryAttachment = { index ->
+                        (attachments.getOrNull(index) as? PendingAttachment.File)?.let { startUpload(it) }
+                    },
+                    permissions = permissions,
+                    pendingPermission = pendingPermission,
+                    onPermissionPick = { value -> scope.launch { report(store.setPermissionPreset(value)) } },
+                    contextBreakdown = contextBreakdown,
+                    contextPressure = contextPressure,
+                    running = conversation?.running == true,
+                    enabled = currentSessionId != null && !composer.submitting,
+                    preparing = composer.preparing,
+                    onOpenSheet = { sheet = ChatSheet.Commands },
+                    // A lambda, not `::send`. The composer holds this through rememberUpdatedState,
+                    // which keeps what it has when the new value is equal to it, and a reference to a
+                    // local function equals every other reference to that function whatever it
+                    // captured. Each session's `::send` compared equal to the first and was dropped, so
+                    // the button went on sending with the attachment list of whichever session was
+                    // open when this screen first composed. A lambda is rebuilt when what it captures
+                    // changes and compares by identity, so the composer always holds the current one.
+                    onSend = { text -> send(text) },
+                    onStop = { scope.launch { store.cancelTurn() } },
+                )
+
+                StatsFooter(stats = sessionStats, usage = tokenUsage)
                 }
             }
-
-            Composer(
-                draft = draft,
-                onDraftChange = { draft = it },
-                attachments = attachments,
-                onRemoveAttachment = { index -> attachments.removeAt(index) },
-                onRetryAttachment = { index ->
-                    (attachments.getOrNull(index) as? PendingAttachment.File)?.let { startUpload(it) }
-                },
-                permissions = permissions,
-                pendingPermission = pendingPermission,
-                onPermissionPick = { value -> scope.launch { report(store.setPermissionPreset(value)) } },
-                contextBreakdown = contextBreakdown,
-                contextPressure = contextPressure,
-                running = conversation?.running == true,
-                enabled = currentSessionId != null && !composer.submitting,
-                preparing = composer.preparing,
-                onOpenSheet = { sheet = ChatSheet.Commands },
-                // A lambda, not `::send`. The composer holds this through rememberUpdatedState,
-                // which keeps what it has when the new value is equal to it, and a reference to a
-                // local function equals every other reference to that function whatever it
-                // captured. Each session's `::send` compared equal to the first and was dropped, so
-                // the button went on sending with the attachment list of whichever session was
-                // open when this screen first composed. A lambda is rebuilt when what it captures
-                // changes and compares by identity, so the composer always holds the current one.
-                onSend = { text -> send(text) },
-                onStop = { scope.launch { store.cancelTurn() } },
-            )
-
-            StatsFooter(stats = sessionStats, usage = tokenUsage)
         }
         DsToastHost(toast, modifier = Modifier.fillMaxWidth())
     }
 
     }
+    referencePicker?.let { ReferencePicker(store, composer, it, onClose = { referencePicker = null }) }
     panelKey?.let { key -> WorkspacePanels(store, store.panels.get(key), onDismiss = { panelKey = null }) }
     feedback?.let { (key, id, positive) -> FeedbackDialog(store, key, id, positive) { feedback = null } }
     when (sheet) {

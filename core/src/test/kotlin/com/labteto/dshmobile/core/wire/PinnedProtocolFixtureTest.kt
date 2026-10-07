@@ -8,14 +8,14 @@ import org.junit.Assert.*
 import org.junit.Test
 
 /**
- * Shapes pinned at tag `dsh-v0.2.0-rc.1` (`protocol/4878cda.json`), unchanged since
+ * Shapes pinned at tag `dsh-v0.2.1-alpha.1` (`protocol/5badb15.json`), with legacy shapes from
  * `dsh-v0.1.7-rc.2`, decoded by the shipped DTOs and fold.
  *
  * The fixture's commit must equal [DshCore.PROTOCOL_COMMIT], so moving the baseline without
  * re-transcribing the fixture fails here rather than passing on stale shapes.
  */
 class PinnedProtocolFixtureTest {
-    private val fixture = Json.parseToJsonElement(javaClass.getResource("/protocol/4878cda.json")!!.readText()).jsonObject
+    private val fixture = Json.parseToJsonElement(javaClass.getResource("/protocol/5badb15.json")!!.readText()).jsonObject
 
     private fun events(): List<SessionEventEnvelope> = fixture.getValue("events").jsonArray.map { raw ->
         val e = raw.jsonObject
@@ -148,5 +148,14 @@ class PinnedProtocolFixtureTest {
         assertEquals("attachment-2", snapshot.info?.controllerId)
         assertEquals(snapshot.sequence!! + 1, output.sequence)
         assertFalse(decodeFromJsonElement(WorkspaceFileText.serializer(), fixture.getValue("fileRead")).eof)
+    }
+    @Test fun newQuestionAndAutomationProjectionsDecode() {
+        val questions = decodeFromJsonElement(UserQuestionsView.serializer(), fixture.getValue("userQuestions"))
+        assertEquals("continued", questions.active.single().state)
+        assertEquals("Yes", questions.settled.single().answers.single().selected.single())
+        val task = decodeFromJsonElement(AutomationTask.serializer(), fixture.getValue("automation"))
+        assertEquals(listOf(1, 5), task.weekdays)
+        val legacy = Json.parseToJsonElement(javaClass.getResource("/protocol/4878cda.json")!!.readText()).jsonObject
+        assertEquals(fixture.getValue("events"), legacy.getValue("events"))
     }
 }

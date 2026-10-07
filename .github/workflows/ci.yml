@@ -34,3 +34,48 @@ jobs:
         with:
           name: dsh-mobile-debug
           path: app/build/outputs/apk/debug/*.apk
+
+  harness-conformance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: 5badb15009ae1756c3afe0ae0cef1faafc290ccc
+          path: build/harness-0.2.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+          run_install: false
+      - name: Build pinned harness
+        working-directory: build/harness-0.2.1
+        run: |
+          pnpm install --frozen-lockfile
+          # POSIX session checkpoints require the native flock addon before any model turn.
+          pnpm run build:native-system
+          pnpm run build:lib
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Real harness conformance
+        env:
+          DSH_HARNESS_SRC: ${{ github.workspace }}/build/harness-0.2.1
+        run: ./gradlew :conformance:test --stacktrace
+      - name: Upload conformance results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: harness-conformance-results
+          path: |
+            conformance/build/reports/tests/test
+            conformance/build/conformance-logs

@@ -98,7 +98,7 @@ class HarnessClientFactory @Inject constructor(
         val base = config.baseUrl
         val cookie = cookieFor(config)
         return RemoteStreamMux { sink ->
-            WsChannel("$base$REMOTE_STREAM_MUX_PATH", http, sink, authorization, cookie)
+            WsChannel(com.labteto.dshmobile.core.wire.resolveHarnessUrl(base, REMOTE_STREAM_MUX_PATH).toString(), http, sink, authorization, cookie)
         }
     }
 

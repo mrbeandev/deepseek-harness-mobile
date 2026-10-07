@@ -85,14 +85,14 @@ class HostsStore @Inject constructor(
 
     suspend fun upsertHost(config: HostConfig) {
         val current = hosts.first().toMutableList()
-        current.removeAll { it.host == config.host && it.port == config.port }
+        current.removeAll { it.id == config.id || it.baseUrl == config.baseUrl }
         current.add(0, config)
         persist(current)
     }
 
-    suspend fun touchHost(host: String, port: Int) {
+    suspend fun touchHost(id: String) {
         val current = hosts.first().map {
-            if (it.host == host && it.port == port) it.copy(lastConnectedAt = System.currentTimeMillis()) else it
+            if (it.id == id) it.copy(lastConnectedAt = System.currentTimeMillis()) else it
         }
         persist(current)
     }
@@ -113,13 +113,15 @@ class HostsStore @Inject constructor(
         useTls: Boolean = false,
         description: HostDescription? = null,
         relay: RelayIdentity? = null,
+        basePath: String = "",
     ): HostConfig {
-        val existing = hosts.first().firstOrNull { it.host == host && it.port == port }
+        val existing = hosts.first().firstOrNull { it.baseUrl == harnessBaseUrl(host, port, relay?.useTls ?: useTls, basePath) }
         val config = HostConfig(
             id = existing?.id ?: UUID.randomUUID().toString(),
             name = name,
             host = host,
             port = port,
+            basePath = basePath,
             isLoopback = isLoopback,
             lastConnectedAt = System.currentTimeMillis(),
             lastHome = description?.home ?: existing?.lastHome,
@@ -138,12 +140,12 @@ class HostsStore @Inject constructor(
     }
 
     /** Fold a fresh host description into the remembered entry without touching its recency. */
-    suspend fun cacheDescription(host: String, port: Int, description: HostDescription) {
+    suspend fun cacheDescription(id: String, description: HostDescription) {
         val current = hosts.first()
-        if (current.none { it.host == host && it.port == port }) return
+        if (current.none { it.id == id }) return
         persist(
             current.map {
-                if (it.host == host && it.port == port) {
+                if (it.id == id) {
                     it.copy(lastHome = description.home)
                 } else {
                     it
@@ -165,11 +167,10 @@ class HostsStore @Inject constructor(
     }
 
     /**
-     * The session last opened on [hostKey] (`"host:port"`), or null when this harness has not been
-     * used before. Keyed per host because session ids are host-scoped — one global key would try to
-     * reopen a stale id from a different harness after every host switch.
+     * The session last opened on the complete endpoint, falling back to its legacy host:port key
+     * for saved data from before proxy roots and TLS became part of session history identity.
      */
-    suspend fun lastSessionId(hostKey: String): String? = lastSessions()[hostKey]
+    suspend fun lastSessionId(host: HostConfig): String? = host.rememberedSession(lastSessions())
 
     /** Remember [sessionId] as the landing session for [hostKey], keeping the newest 8 hosts. */
     suspend fun setLastSessionId(hostKey: String, sessionId: String) {

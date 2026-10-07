@@ -93,6 +93,12 @@ private fun encodeQueryComponent(value: String): String =
 /** The gateway's refusal of an argument object that does not match the host method's parameters. */
 private const val ARGUMENTS_INVALID = "gateway/arguments-invalid"
 
+/** The mux has no HTTP 404; the gateway reports an absent/withdrawn export in its envelope. */
+fun RpcError.classifyCapability(): RpcError = when (code) {
+    "gateway/invocation-unavailable", "gateway/definition-unavailable" -> copy(code = "capability-unavailable")
+    else -> this
+}
+
 /** The streaming file-upload route (`packages/client/file-upload/src/protocol.ts`). */
 const val FILE_UPLOAD_PATH: String = "/api/session/uploadFileBinary"
 
@@ -158,7 +164,7 @@ class DshApiClient(
                     // into a crash on the connect screen.
                     RpcResult.Err(notAHarness("response value decode failed: ${e.message}"))
                 }
-                is RpcResult.Err -> result
+                is RpcResult.Err -> RpcResult.Err(result.error.classifyCapability())
             }
         } catch (e: RpcTransportException) {
             RpcResult.Err(transportError(e))

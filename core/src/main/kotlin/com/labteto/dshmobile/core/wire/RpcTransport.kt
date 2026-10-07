@@ -133,10 +133,11 @@ class OkHttpRpcTransport(
         .writeTimeout(writeTimeoutMs, TimeUnit.MILLISECONDS)
         .build()
 
+    private val packageClient by lazy { httpClient.newBuilder().readTimeout(0, TimeUnit.MILLISECONDS).callTimeout(0, TimeUnit.MILLISECONDS).build() }
+
     override suspend fun post(path: String, body: String): RpcHttpResponse =
         suspendCancellableCoroutine { continuation ->
-            val target = base.resolve(path)
-                ?: throw RpcTransportException(0, "cannot resolve $path against $base")
+            val target = resolveHarnessUrl(base.toString(), path)
             val request = Request.Builder()
                 .url(target)
                 .header("Host", hostHeader)
@@ -145,7 +146,10 @@ class OkHttpRpcTransport(
                 .cookied(cookie)
                 .post(body.toRequestBody(JSON_MEDIA_TYPE))
                 .build()
-            val call = httpClient.newCall(request)
+            // Package operations are host-owned and may outlive the ordinary RPC read budget.
+            // Keep the connection budget, and let explicit cancellation or the host settle them.
+            val carrier = if (path in setOf("/api/pluginManager/installBundle", "/api/pluginManager/waitForInstall")) packageClient else httpClient
+            val call = carrier.newCall(request)
             continuation.invokeOnCancellation { call.cancel() }
             call.enqueue(object : Callback {
                 override fun onFailure(call: Call, e: IOException) {
@@ -204,8 +208,7 @@ class OkHttpRpcTransport(
         path: String,
         consume: (contentType: String?, contentDisposition: String?, body: InputStream) -> T,
     ): T = withContext(Dispatchers.IO) {
-        val target = base.resolve(path)
-            ?: throw RpcTransportException(0, "cannot resolve $path against $base")
+        val target = resolveHarnessUrl(base.toString(), path)
         val request = Request.Builder()
             .url(target)
             .header("Host", hostHeader)
@@ -237,8 +240,7 @@ class OkHttpRpcTransport(
         body: InputStream,
         onProgress: ((sent: Long) -> Unit)?,
     ): RpcHttpResponse = withContext(Dispatchers.IO) {
-        val target = base.resolve(path)
-            ?: throw RpcTransportException(0, "cannot resolve $path against $base")
+        val target = resolveHarnessUrl(base.toString(), path)
         val requestBody = object : RequestBody() {
             override fun contentType(): MediaType? = contentType.toMediaType()
             override fun contentLength(): Long = contentLength

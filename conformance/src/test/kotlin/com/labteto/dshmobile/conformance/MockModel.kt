@@ -23,11 +23,15 @@ class MockModel private constructor(
     /** The bearer token the server will require, and the harness will send. */
     val apiKey: String,
     private val process: Process,
+    private val log: ProcessLog,
+    private val reader: Thread,
 ) : AutoCloseable {
 
     override fun close() {
         process.destroy()
         if (!process.waitFor(5, TimeUnit.SECONDS)) process.destroyForcibly()
+        reader.join(5000)
+        log.write()
     }
 
     companion object {
@@ -86,10 +90,10 @@ class MockModel private constructor(
             // Kept so a failure to start can say what the server complained about. Its argument
             // parser rejects the whole command line rather than ignoring an option it dislikes, so
             // "exited before announcing itself" on its own is never enough to act on.
-            val transcript = StringBuilder()
+            val log = ProcessLog("model")
             val reader = Thread {
                 process.inputStream.bufferedReader().forEachLine { line ->
-                    synchronized(transcript) { transcript.appendLine(line) }
+                    log.append(line)
                     // The server speaks JSONL; its first `ready` record carries the base URL.
                     if (line.contains("\"type\":\"ready\"")) {
                         Regex(""""baseURL":"([^"]+)"""").find(line)
@@ -103,17 +107,21 @@ class MockModel private constructor(
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(READY_TIMEOUT_SECONDS)
             while (ready.get() == null && System.nanoTime() < deadline) {
                 check(process.isAlive) {
+                    reader.join(1000)
+                    log.write()
                     "mock model exited before announcing itself. Its output was:\n" +
-                        synchronized(transcript) { transcript.toString() }.take(1500)
+                        log.text().take(1500)
                 }
                 Thread.sleep(50)
             }
             val url = ready.get()
             if (url == null) {
                 process.destroyForcibly()
+                reader.join(5000)
+                log.write()
                 error("mock model did not announce itself within ${READY_TIMEOUT_SECONDS}s")
             }
-            return MockModel(baseUrl = url, apiKey = API_KEY, process = process)
+            return MockModel(baseUrl = url, apiKey = API_KEY, process = process, log = log, reader = reader)
         }
 
         /**

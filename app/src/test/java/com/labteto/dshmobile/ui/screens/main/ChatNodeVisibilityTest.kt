@@ -22,6 +22,51 @@ import org.junit.Test
  * above the conversation. These pin the predicate that keeps them out.
  */
 class ChatNodeVisibilityTest {
+    private fun streamingTool() = AssistantMessageNode(
+        seq = 7, messageId = null, turn = 1, step = 1, streaming = true,
+        blocks = listOf(ChatBlock(kind = "tool-call", toolCallId = "c", toolName = "read",
+            argumentsJson = "{\"path\":\"src/ทดสอบ")),
+    )
+
+    @Test fun `tool-only streaming node reaches the transcript before execution`() {
+        val node = streamingTool()
+        assertEquals(listOf(node), renderableChatNodes(listOf(node), running = true))
+        assertTrue(node.showsToolPreview(node.blocks.single(), true, emptySet()))
+    }
+
+    @Test fun `durable tool card replaces the inline preview even if streaming tail remains`() {
+        val node = streamingTool()
+        val call = ToolCallNode(seq = 6, callId = "c", name = "read", arguments = "{}", turn = 1, step = 1)
+        assertEquals(listOf(call), renderableChatNodes(listOf(call, node), running = true))
+        assertFalse(node.showsToolPreview(node.blocks.single(), true, setOf("c")))
+    }
+
+    @Test fun `non-streaming tool-only messages stay hidden during a running turn`() {
+        val node = streamingTool().copy(streaming = false)
+        assertTrue(renderableChatNodes(listOf(node), running = true).isEmpty())
+        assertFalse(node.showsToolPreview(node.blocks.single(), true, emptySet()))
+    }
+
+    @Test fun `stopping the turn hides a provisional preview without changing nodes`() {
+        val nodes = listOf(streamingTool())
+        assertEquals(nodes, renderableChatNodes(nodes, running = true))
+        assertTrue(renderableChatNodes(nodes, running = false).isEmpty())
+    }
+
+    @Test fun `another call does not hide this tools partial argument preview`() {
+        val node = streamingTool()
+        val other = ToolCallNode(seq = 6, callId = "other", name = "read", arguments = "{}", turn = 1, step = 1)
+        assertEquals(listOf(other, node), renderableChatNodes(listOf(other, node), running = true))
+        val preview = toolRowModel(node.blocks.single().toolName!!, node.blocks.single().argumentsJson, null)
+        assertEquals("Read", preview.title)
+        assertEquals("src/ทดสอบ", preview.summary)
+    }
+
+    @Test fun `interrupted messages keep the stopped marker but no live tool preview`() {
+        val node = streamingTool().copy(interrupted = true)
+        assertEquals(listOf(node), renderableChatNodes(listOf(node), running = true))
+        assertFalse(node.showsToolPreview(node.blocks.single(), true, emptySet()))
+    }
 
     @Test
     fun `structural nodes draw nothing`() {

@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,17 +56,22 @@ internal fun ModelsSheet(
 ) {
     val scope = rememberCoroutineScope()
     val colors = DsTheme.colors
+    var query by remember { mutableStateOf("") }
     DsBottomSheet(title = stringResource(R.string.models_title), onDismiss = onDismiss) {
         if (models == null) {
             Text(stringResource(R.string.common_loading), style = DsType.std14, color = colors.labelTertiary)
             return@DsBottomSheet
+        }
+        if (models.groups.sumOf { it.models.size } > 4) ChatSearchField(query, { query = it })
+        if (models.groups.none { group -> group.models.any { modelSearchMatches(query, "${group.id} ${group.name} ${it.id} ${it.name}") } }) {
+            Text(stringResource(R.string.ux_b_no_models), style = DsType.small13, color = colors.labelSecondary)
         }
         val current = models.current
         if (!models.routable) {
             Text(
                 stringResource(R.string.models_unroutable),
                 style = DsType.small13,
-                color = colors.warnLabel,
+                color = colors.warnText,
             )
         }
         Column(
@@ -76,6 +81,8 @@ internal fun ModelsSheet(
             verticalArrangement = Arrangement.spacedBy(DsSpacing.tiny),
         ) {
             models.groups.forEach { group ->
+                val matching = group.models.filter { modelSearchMatches(query, "${group.id} ${group.name} ${it.id} ${it.name}") }
+                if (matching.isEmpty()) return@forEach
                 // The provider recedes: it names the shelf, and the models on it are the choice.
                 // At the section weight this used the group read as loud as its own contents.
                 Text(
@@ -88,7 +95,7 @@ internal fun ModelsSheet(
                         bottom = DsSpacing.tiny,
                     ),
                 )
-                group.models.forEach { model ->
+                matching.forEach { model ->
                     val isCurrent = current.provider == group.id && current.model == model.id
                     ModelRow(
                         model = model,
@@ -105,7 +112,7 @@ internal fun ModelsSheet(
                 Text(
                     stringResource(R.string.err_model_unavailable, "${failure.name}: ${failure.message}"),
                     style = DsType.caption11,
-                    color = colors.warnLabel,
+                    color = colors.warnText,
                     modifier = Modifier.padding(horizontal = DsSpacing.small, vertical = DsSpacing.tiny),
                 )
             }
@@ -205,4 +212,10 @@ private fun ModelRow(
             }
         }
     }
+}
+
+internal fun modelSearchMatches(query: String, text: String): Boolean = query.lowercase().split(Regex("\\s+")).all { word ->
+    var index = 0
+    text.lowercase().forEach { if (index < word.length && it == word[index]) index++ }
+    index == word.length
 }

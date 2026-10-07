@@ -108,7 +108,7 @@ class ConnectionManager @Inject constructor(
         override fun onConnected(generation: HostGeneration) {
             this@ConnectionManager.generation = generation
             val host = activeHost
-            if (host != null) scope.launch { hostsStore.touchHost(host.host, host.port) }
+            if (host != null) scope.launch { hostsStore.touchHost(host.id) }
             _state.value = ConnectionUiState(
                 phase = ConnectionPhase.CONNECTED,
                 host = activeHost,

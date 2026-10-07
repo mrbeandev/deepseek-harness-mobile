@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.OpenInFull
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Surface
@@ -37,16 +38,26 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import com.labteto.dshmobile.ui.theme.DsSpacing
 import com.labteto.dshmobile.R
 import com.labteto.dshmobile.core.wire.dto.AskUserQuestionAnswer
 import com.labteto.dshmobile.core.wire.dto.AskUserQuestionItem
@@ -85,6 +96,13 @@ internal fun QuestionsPanel(
     onSubmit: suspend (AskUserQuestionAnswer) -> String?,
     onDismiss: suspend () -> String?,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    dismissIsLocal: Boolean = false,
+    revision: String = "",
+    initialDrafts: List<QuestionDraft>? = null,
+    onDraftsChange: (List<QuestionDraft>) -> Unit = {},
+    statusContent: (@Composable () -> Unit)? = null,
+    onFocusChange: (Boolean) -> Unit = {},
 ) {
     val colors = DsTheme.colors
     val scope = rememberCoroutineScope()
@@ -93,12 +111,15 @@ internal fun QuestionsPanel(
     // with an equal-but-new payload, and a half-filled batch has to survive that. Collapse is a
     // view preference, so it also survives a rotation — but not a genuinely new request.
     var index by remember(requestKey) { mutableIntStateOf(0) }
-    var drafts by remember(requestKey) { mutableStateOf(questions.map { QuestionDraft() }) }
+    var drafts by remember(requestKey) { mutableStateOf(initialDrafts?.takeIf { it.size == questions.size } ?: questions.map { QuestionDraft() }) }
     var minimized by rememberSaveable(requestKey) { mutableStateOf(false) }
     var busy by remember(requestKey) { mutableStateOf(false) }
     var complaint by remember(requestKey) { mutableStateOf<Complaint?>(null) }
     var failure by remember(requestKey) { mutableStateOf<String?>(null) }
+    androidx.compose.runtime.LaunchedEffect(revision) { busy = false }
     val bodyScroll = rememberScrollState()
+    var expanded by remember(requestKey) { mutableStateOf(false) }
+    val fontScale = LocalDensity.current.fontScale
 
     val question = questions.getOrNull(index) ?: return
     val draft = drafts.getOrElse(index) { QuestionDraft() }
@@ -151,6 +172,7 @@ internal fun QuestionsPanel(
 
     fun updateDraft(update: (QuestionDraft) -> QuestionDraft) {
         drafts = drafts.mapIndexed { at, value -> if (at == index) update(value) else value }
+        onDraftsChange(drafts)
         clearFeedback()
     }
 
@@ -159,16 +181,29 @@ internal fun QuestionsPanel(
             if (at == index) QuestionDraft(skipped = true) else value
         }
         drafts = next
+        onDraftsChange(next)
         clearFeedback()
         if (index < questions.lastIndex) index += 1 else submit(next)
     }
 
-    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val cap = questionCardMaxHeight(maxHeight)
+    @Composable
+    fun Card(cap: Dp, compact: Boolean, inSheet: Boolean) {
+        // Read the window where the input actually lives: an expanded sheet has its own window.
+        // Window changes must also release/reacquire the pause even if the field keeps its focus.
+        val windowFocused = LocalWindowInfo.current.isWindowFocused
+        var fieldFocused by remember { mutableStateOf(false) }
+        val reportFocus by rememberUpdatedState(onFocusChange)
+        androidx.compose.runtime.LaunchedEffect(fieldFocused, windowFocused) {
+            reportFocus(fieldFocused && windowFocused)
+        }
+        androidx.compose.runtime.DisposableEffect(Unit) {
+            onDispose { reportFocus(false) }
+        }
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(if (minimized) Modifier else Modifier.heightIn(max = cap))
+                .onFocusChanged { fieldFocused = it.hasFocus }
+                .then(if (compact) Modifier else Modifier.heightIn(max = cap))
                 .animateContentSize(DsAnimations.expand),
             shape = DsShapes.approvalCard,
             color = colors.composerCard,
@@ -176,20 +211,26 @@ internal fun QuestionsPanel(
             shadowElevation = 2.dp,
         ) {
             Column(
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.padding(horizontal = DsSpacing.medium, vertical = DsSpacing.small),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 QuestionHeader(
                     question = question,
                     index = index,
                     count = questions.size,
-                    minimized = minimized,
-                    busy = busy,
-                    onToggle = { minimized = !minimized },
+                    minimized = compact,
+                    busy = if (dismissIsLocal) false else busy || !enabled,
+                    onToggle = {
+                        if (inSheet) { expanded = false; minimized = true }
+                        else if (compact && !minimized) expanded = true
+                        else minimized = !minimized
+                    },
+                    onExpand = if (inSheet || statusContent == null) null else ({ expanded = true }),
                     onDismiss = { send { onDismiss() } },
                 )
 
-                if (!minimized) {
+                statusContent?.invoke()
+                if (!compact) {
                     QuestionBody(
                         modifier = Modifier
                             .weight(1f, fill = false)
@@ -198,7 +239,7 @@ internal fun QuestionsPanel(
                         draft = draft,
                         options = options,
                         multiSelect = multiSelect,
-                        busy = busy,
+                        busy = busy || !enabled,
                         lastQuestion = index == questions.lastIndex,
                         onChoose = { label ->
                             updateDraft { it.choose(label, multiSelect) }
@@ -211,7 +252,7 @@ internal fun QuestionsPanel(
                     QuestionFooter(
                         index = index,
                         count = questions.size,
-                        busy = busy,
+                        busy = busy || !enabled,
                         canContinue = draft.answered(),
                         feedback = when {
                             failure != null -> failure
@@ -226,6 +267,24 @@ internal fun QuestionsPanel(
                     )
                 }
             }
+        }
+    }
+    BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
+        // A useful body needs room after the header, status and fixed actions, including large fonts.
+        // In tight chat/IME space show a named expand action instead of a clipped option fragment.
+        val compact = minimized || (statusContent != null && maxHeight < 300.dp * fontScale)
+        if (expanded) {
+            DsButton(stringResource(R.string.ux_b_view_questions), { expanded = true }, variant = DsButtonVariant.Ghost)
+            DsBottomSheet(
+                title = stringResource(R.string.harness_questions), onDismiss = { expanded = false },
+                trailing = { DsIconButton(Icons.Filled.Close, stringResource(R.string.common_close), { expanded = false }) },
+            ) {
+                BoxWithConstraints(Modifier.fillMaxWidth()) {
+                    Card(minOf(maxHeight, 600.dp), compact = false, inSheet = true)
+                }
+            }
+        } else {
+            Card(if (statusContent == null) questionCardMaxHeight(maxHeight) else minOf(maxHeight, 420.dp), compact, inSheet = false)
         }
     }
 }
@@ -252,12 +311,14 @@ private fun QuestionHeader(
     minimized: Boolean,
     busy: Boolean,
     onToggle: () -> Unit,
+    onExpand: (() -> Unit)?,
     onDismiss: () -> Unit,
 ) {
     val colors = DsTheme.colors
     val toggleLabel = stringResource(
         if (minimized) R.string.questions_expand else R.string.questions_collapse,
     )
+    val expandedState = stringResource(if (minimized) R.string.ux_b_collapsed else R.string.ux_b_expanded)
     val rotation by animateFloatAsState(
         targetValue = if (minimized) 0f else 90f,
         animationSpec = DsAnimations.chevron,
@@ -267,7 +328,12 @@ private fun QuestionHeader(
         Row(
             modifier = Modifier
                 .weight(1f)
-                .clickable(enabled = !busy, onClickLabel = toggleLabel, onClick = onToggle),
+                .heightIn(min = DsSpacing.touchTarget)
+                .clickable(enabled = !busy, role = Role.Button, onClickLabel = toggleLabel, onClick = onToggle)
+                .semantics(mergeDescendants = true) {
+                    contentDescription = question.question
+                    stateDescription = expandedState
+                },
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
@@ -306,6 +372,11 @@ private fun QuestionHeader(
             )
             Spacer(Modifier.width(4.dp))
         }
+        if (onExpand != null) DsIconButton(
+            icon = Icons.Filled.OpenInFull,
+            contentDescription = stringResource(R.string.ux_b_view_questions),
+            onClick = onExpand,
+        )
         DsIconButton(
             icon = Icons.Filled.Close,
             contentDescription = stringResource(R.string.questions_dismiss),

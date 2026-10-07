@@ -178,7 +178,7 @@ private fun ModelChip(
     val group = models.groups.firstOrNull { it.id == current.provider }
     val model = group?.models?.firstOrNull { it.id == current.model }
     val effort = model?.reasoning?.efforts?.firstOrNull { it.id == current.reasoningEffort }
-    val modelLabel = model?.name ?: current.model
+    val modelLabel = model?.name ?: technicalDisplay(current.model)
 
     Row(
         modifier = modifier

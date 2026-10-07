@@ -1,5 +1,8 @@
 package com.labteto.dshmobile.data
 
+import com.labteto.dshmobile.core.wire.automationCatalog
+import com.labteto.dshmobile.core.wire.pluginBundles
+
 import android.util.Base64
 import android.util.Log
 import com.labteto.dshmobile.connection.ConnectionManager
@@ -32,7 +35,6 @@ import com.labteto.dshmobile.core.wire.dto.EncodedFileUploadRequest
 import com.labteto.dshmobile.core.wire.dto.EncodedImageAttachment
 import com.labteto.dshmobile.core.wire.dto.FileUploadValue
 import com.labteto.dshmobile.core.wire.dto.GoalRef
-import com.labteto.dshmobile.core.wire.dto.GoalSnapshot
 import com.labteto.dshmobile.core.wire.dto.HostDescription
 import com.labteto.dshmobile.core.wire.dto.ImageLimitsView
 import com.labteto.dshmobile.core.wire.dto.ImageRejection
@@ -136,6 +138,16 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+
+/** Current CAS identity from a bare goal/ref or the harness's `{ goal: ... }` projection. */
+internal fun goalRefFromProjection(value: JsonElement?): GoalRef? {
+    val projection = value as? JsonObject ?: return null
+    // An explicit null goal means cleared; never fall back to an envelope's unrelated fields.
+    val goal = if ("goal" in projection) projection["goal"] else projection
+    return goal?.let {
+        runCatching { decodeFromJsonElement(GoalRef.serializer(), it) }.getOrNull()
+    }?.takeIf { it.id.isNotBlank() && it.revision > 0 }
+}
 
 /** One renderable session list row (manual order, live). */
 data class SessionRow(
@@ -301,19 +313,63 @@ sealed interface ArchiveOutcome {
  */
 @Singleton
 class SessionStore @Inject constructor(
+    @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
     private val connectionManager: ConnectionManager,
     private val hostsStore: HostsStore,
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private val lock = Any()
     private val baselineMutex = Mutex()
+    private val noCurrentGoalMessage = { context.getString(com.labteto.dshmobile.R.string.goal_none) }
+    private val featureAvailability = FeatureAvailability { setConnectionError(it.message) }
+    val automationAvailable = featureAvailability.state(HarnessFeature.AUTOMATION)
+    val pluginManagementAvailable = featureAvailability.state(HarnessFeature.PLUGIN_MANAGEMENT)
+    val timedQuestionsAvailable = featureAvailability.state(HarnessFeature.TIMED_QUESTIONS)
+    val sessionReferencesAvailable = featureAvailability.state(HarnessFeature.SESSION_REFERENCES)
+    val questionSessions = QuestionSessions(scope, { connectionManager.connectedApi },
+        { connectionManager.generation?.mux }, { connectionManager.generation?.clientId },
+        onCapability = { clientId, result ->
+            if (clientId != null && clientId == connectionManager.generation?.clientId) {
+                featureAvailability.observe(HarnessFeature.TIMED_QUESTIONS, featureAvailability.generation(), result)
+            }
+        },
+        onUnavailable = { sid, eventId, questions -> handleQuestionRequested(eventId, sid, questions) })
+    private val _hostEvents = kotlinx.coroutines.flow.MutableSharedFlow<Pair<String, List<JsonElement>>>(extraBufferCapacity = 128)
+    val hostEvents = _hostEvents as kotlinx.coroutines.flow.SharedFlow<Pair<String, List<JsonElement>>>
+
+    val pluginOperations = PluginOperations(scope, ::apiForHost, context.getSharedPreferences("plugin-operation", android.content.Context.MODE_PRIVATE),
+        observe = { featureObserver(HarnessFeature.PLUGIN_MANAGEMENT) },
+        available = { pluginManagementAvailable.value != false })
     val connectionState = connectionManager.state
     val activeHostKey: String? get() = connectionManager.state.value.host?.let { "${it.baseUrl}|${it.id}" }
     internal val panels = com.labteto.dshmobile.ui.screens.main.PanelRepository()
-    internal val composers = com.labteto.dshmobile.ui.screens.main.ComposerRepository()
+    internal val composers = com.labteto.dshmobile.ui.screens.main.ComposerRepository(context.getSharedPreferences("composer-drafts", android.content.Context.MODE_PRIVATE))
     fun apiForHost(key: String?): DshApiClient? = if (key != null && key == activeHostKey) connectionManager.connectedApi else null
     fun muxForHost(key: String?) = if (key != null && key == activeHostKey) connectionManager.generation?.mux else null
     fun retryConnection() = connectionManager.reconnectIfNeeded()
+
+    suspend fun <T> featureCall(feature: HarnessFeature, api: DshApiClient, call: suspend () -> RpcResult<T>): RpcResult<T> {
+        val observe = featureObserver(feature)
+        val result = call()
+        observe(api, result)
+        return result
+    }
+
+    private fun featureObserver(feature: HarnessFeature): (DshApiClient, RpcResult<*>) -> Unit {
+        val epoch = featureAvailability.generation()
+        val clientId = connectionManager.generation?.clientId
+        return { api, result ->
+            if (clientId != null && clientId == connectionManager.generation?.clientId && api === connectionManager.connectedApi) {
+                featureAvailability.observe(feature, epoch, result)
+            }
+        }
+    }
+
+    private fun probeFeatures() {
+        val api = connectionManager.connectedApi ?: return
+        scope.launch { featureCall(HarnessFeature.AUTOMATION, api) { api.automationCatalog() } }
+        scope.launch { featureCall(HarnessFeature.PLUGIN_MANAGEMENT, api) { api.pluginBundles() } }
+    }
     private val permissionCatalog = MutableStateFlow<PermissionCatalog?>(null)
     private var permissionCatalogEpoch = 0L
     private val queuesBySession = MutableStateFlow<Map<String, List<QueueItem>>>(emptyMap())
@@ -504,6 +560,7 @@ class SessionStore @Inject constructor(
     private val workspaceOrder = ArrayList<String>()
     private var archived = emptySet<String>()
     private val pendingKinds = HashMap<String, MutableSet<String>>()
+    private var modernQuestionKinds: Map<String, Set<String>> = emptyMap()
 
     // Pending Remote Event waterfalls this store can answer. Keyed by the frame's `eventId`,
     // which is both what an answer names and what a `cancel` frame withdraws — 0.1.2 mints no
@@ -557,6 +614,17 @@ class SessionStore @Inject constructor(
     private data class ProjectionValue(val seq: Int, val value: JsonElement)
 
     init {
+        scope.launch {
+            questionSessions.cards.collect { cards ->
+                val kinds = cards.pendingQuestionKinds()
+                synchronized(lock) {
+                    if (modernQuestionKinds != kinds) {
+                        modernQuestionKinds = kinds
+                        emitSessionsLocked()
+                    }
+                }
+            }
+        }
         observeConnection()
         observeEvents()
         observePermissionSettlement()
@@ -605,12 +673,22 @@ class SessionStore @Inject constructor(
         scope.launch {
             var prev = connectionManager.state.value
             connectionManager.state.collect { state ->
+                if (prev.host?.id != state.host?.id || prev.host?.baseUrl != state.host?.baseUrl ||
+                    (prev.phase != state.phase && (prev.phase == ConnectionPhase.CONNECTED || state.phase == ConnectionPhase.CONNECTED))) {
+                    featureAvailability.reset()
+                }
+                if (prev.host?.id != state.host?.id || prev.host?.baseUrl != state.host?.baseUrl) questionSessions.reset()
+                else if (prev.phase == ConnectionPhase.CONNECTED && state.phase != ConnectionPhase.CONNECTED) questionSessions.disconnect()
                 val initialConnect = !prev.hasConnected && state.hasConnected
                 val reconnect = prev.hasConnected &&
                     prev.phase == ConnectionPhase.RECONNECTING &&
                     state.phase == ConnectionPhase.CONNECTED
                 prev = state
-                if (initialConnect || reconnect) triggerBaseline()
+                if (initialConnect || reconnect) {
+                    probeFeatures()
+                    triggerBaseline()
+                    activeHostKey?.let { pluginOperations.resume(it) }
+                }
             }
         }
     }
@@ -711,7 +789,7 @@ class SessionStore @Inject constructor(
      * Returns null when there is nothing worth opening, which leaves the empty hero on screen.
      */
     private suspend fun resolveInitialSession(): String? {
-        val remembered = hostKey()?.let { hostsStore.lastSessionId(it) }
+        val remembered = connectionManager.state.value.host?.let { hostsStore.lastSessionId(it) }
         val (rows, workspaces, archivedNow) = synchronized(lock) {
             Triple(
                 sessionRows.values.toList(),
@@ -722,9 +800,9 @@ class SessionStore @Inject constructor(
         return pickInitialSession(rows, workspaces, archivedNow, remembered)
     }
 
-    /** `"host:port"` for the connected harness — session ids are only meaningful within one host. */
+    /** Full endpoint identity: sessions behind different proxy roots belong to different hosts. */
     private fun hostKey(): String? =
-        connectionManager.state.value.host?.let { "${it.host}:${it.port}" }
+        connectionManager.state.value.host?.baseUrl
 
     // ------------------------------------------------------------------ host event frames
     /**
@@ -755,6 +833,8 @@ class SessionStore @Inject constructor(
      * advisory.
      */
     private fun handleNotification(event: String, args: List<JsonElement>) {
+        _hostEvents.tryEmit(event to args)
+        pluginOperations.event(activeHostKey, event, args)
         fun str(i: Int) = args.getOrNull(i)?.jsonPrimitive?.contentOrNull
         when (event) {
             "api-session/added" -> args.firstOrNull()?.let { onSessionAdded(it) }
@@ -800,7 +880,8 @@ class SessionStore @Inject constructor(
                 val request = runCatching {
                     decodeFromJsonElement(AskUserQuestionRequestEvent.serializer(), frame.request)
                 }.getOrNull() ?: return
-                handleQuestionRequested(frame.eventId, frame.agentId, request.questions)
+                if (request.wait != null && timedQuestionsAvailable.value != false) questionSessions.requested(frame.agentId, frame.eventId, request)
+                else handleQuestionRequested(frame.eventId, frame.agentId, request.questions)
             }
             else -> log("unhandled waterfall ${frame.event}")
         }
@@ -817,7 +898,10 @@ class SessionStore @Inject constructor(
      * before it cancels the rest, so this frame reaches every client except the one that acted.
      * That client settles its own card in [answerOutcome].
      */
-    private fun handleWaterfallCancelled(eventId: String) = forgetRequest(eventId)
+    private fun handleWaterfallCancelled(eventId: String) {
+        questionSessions.cancelled(eventId)
+        forgetRequest(eventId)
+    }
 
     /**
      * Drop one request this client is holding, whoever settled it.
@@ -880,6 +964,8 @@ class SessionStore @Inject constructor(
                     var changed = false
                     frame.value.projections.forEach { (sessionId, block) ->
                         val asOf = block["asOfSeq"]?.jsonPrimitive?.intOrNull ?: 0
+                        (block["values"] as? JsonObject)?.get("userQuestions")?.let { questionSessions.projection(sessionId, asOf, it) }
+                        (block["values"] as? JsonObject)?.get("inbox")?.let { questionSessions.inbox(sessionId, it) }
                         val value = (block["values"] as? JsonObject)?.get(AGENT_PRESET_PROJECTION)
                         if (foldAgentPresetLocked(sessionId, asOf, value)) changed = true
                     }
@@ -893,6 +979,8 @@ class SessionStore @Inject constructor(
             is SessionControlFrame.Queue -> applyQueue(frame.sessionId, frame.items)
             is SessionControlFrame.Jobs -> applyJobs(frame.sessionId, frame.jobs)
             is SessionControlFrame.Projection -> {
+                if (frame.key == "userQuestions") questionSessions.projection(frame.sessionId, frame.seq, frame.value)
+                if (frame.key == "inbox") questionSessions.inbox(frame.sessionId, frame.value)
                 // The inbox projection is the queue now, and it arrives for every live session —
                 // not just the open one — so the chat list's per-session dock reads it here.
                 if (frame.key == INBOX_PROJECTION) {
@@ -1170,6 +1258,7 @@ class SessionStore @Inject constructor(
     }
 
     private fun onSessionRemoved(sessionId: String) {
+        questionSessions.removeSession(sessionId)
         synchronized(lock) {
             sessionRows.remove(sessionId)
             pendingKinds.remove(sessionId)
@@ -1294,6 +1383,10 @@ class SessionStore @Inject constructor(
         val existing = currentProjections[key]
         if (existing == null || seq >= existing.seq) {
             currentProjections[key] = ProjectionValue(seq, value)
+            currentId?.let { sid ->
+                if (key == "userQuestions") questionSessions.projection(sid, seq, value)
+                if (key == "inbox") questionSessions.inbox(sid, value)
+            }
         }
     }
 
@@ -1319,6 +1412,7 @@ class SessionStore @Inject constructor(
             queue = queue,
             projections = currentProjections.mapValues { it.value.value },
         )
+        questionSessions.restoreSettled(merged)
         _currentConversation.value = merged
         publishCatalogSubagentsLocked()
     }
@@ -1339,7 +1433,9 @@ class SessionStore @Inject constructor(
 
     private fun emitSessionsLocked() {
         val rows = sessionRows.values.map { row ->
-            row.copy(pendingInteraction = pendingInteractionOf(pendingKinds[row.sessionId]))
+            row.copy(pendingInteraction = pendingInteractionOf(
+                pendingKinds[row.sessionId].orEmpty() + modernQuestionKinds[row.sessionId].orEmpty(),
+            ))
         }
         _sessions.value = rows
     }
@@ -2280,6 +2376,7 @@ class SessionStore @Inject constructor(
                 val ref = synchronized(lock) { goalRefFromProjectionLocked() }
                 if (ref == null) {
                     log("goal $action requires a current goal (no goal projection)")
+                    setConnectionError(noCurrentGoalMessage())
                     return
                 }
                 when (action) {
@@ -2477,13 +2574,7 @@ class SessionStore @Inject constructor(
 
     // ------------------------------------------------------------------ internal helpers
     private fun goalRefFromProjectionLocked(): GoalRef? {
-        val value = currentProjections["goal"]?.value ?: return null
-        return runCatching {
-            val snapshot = decodeFromJsonElement(GoalSnapshot.serializer(), value)
-            GoalRef(snapshot.id, snapshot.revision)
-        }.getOrElse {
-            runCatching { decodeFromJsonElement(GoalRef.serializer(), value) }.getOrNull()
-        }
+        return goalRefFromProjection(currentProjections["goal"]?.value)
     }
 
     private suspend fun loadSkills(sessionId: String) {

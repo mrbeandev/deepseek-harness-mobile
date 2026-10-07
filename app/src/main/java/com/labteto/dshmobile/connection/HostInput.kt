@@ -1,6 +1,7 @@
 package com.labteto.dshmobile.connection
 
 import com.labteto.dshmobile.core.wire.authorityOf
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * What the connect form's host field actually said.
@@ -18,13 +19,14 @@ data class HostInput(
     val port: Int?,
     /** What the scheme said about TLS — `https://` true, `http://` false, no scheme null. */
     val useTls: Boolean?,
+    val basePath: String = "",
 )
 
 /**
  * Read the host field leniently; null means nothing connectable was typed.
  *
  * Accepted: a bare host, `host:port`, an `http://` or `https://` URL with optional port and an
- * ignored path, and IPv6 literals with or without brackets. A port named here is more explicit
+ * preserved proxy path, and IPv6 literals with or without brackets. A port named here is more explicit
  * than the separate port field (it was typed as part of an address, not left over from a previous
  * harness), so callers let it win. Any other scheme is refused rather than guessed at.
  */
@@ -44,7 +46,12 @@ internal fun parseHostInput(raw: String): HostInput? {
         rest = trimmed.substring(schemeEnd + 3)
     }
 
-    // A pasted URL may carry a path, query or fragment; the authority is all that names the host.
+    val path = rest.substringBefore('?').substringBefore('#').substringAfter('/', "")
+    if (rest.substringBefore('/').contains('@') || rest.contains('\\') || rest.any { it.isWhitespace() }) return null
+    val basePath = if (path.isEmpty()) "" else {
+        val url = ("https://placeholder/" + path).toHttpUrlOrNull() ?: return null
+        url.encodedPath.trimEnd('/')
+    }
     rest = rest.takeWhile { it != '/' && it != '?' && it != '#' }
     if (rest.isBlank()) return null
 
@@ -73,7 +80,7 @@ internal fun parseHostInput(raw: String): HostInput? {
         else -> host = rest
     }
     if (host.isBlank() || host.any { it.isWhitespace() }) return null
-    return HostInput(host = host, port = port, useTls = useTls)
+    return HostInput(host = host, port = port, useTls = useTls, basePath = basePath)
 }
 
 private fun String.toValidPort(): Int? = toIntOrNull()?.takeIf { it in 1..65535 }
@@ -85,5 +92,8 @@ private fun String.toValidPort(): Int? = toIntOrNull()?.takeIf { it in 1..65535 
 internal fun urlAuthority(host: String, port: Int): String = authorityOf(host, port)
 
 /** The scheme-qualified base URL for one harness endpoint. */
-internal fun harnessBaseUrl(host: String, port: Int, useTls: Boolean): String =
-    (if (useTls) "https://" else "http://") + urlAuthority(host, port)
+internal fun harnessBaseUrl(host: String, port: Int, useTls: Boolean, basePath: String = ""): String =
+    (if (useTls) "https://" else "http://") + urlAuthority(host, port) + basePath
+
+internal fun endpointKey(host: String, port: Int, useTls: Boolean, basePath: String = ""): String =
+    (if (useTls) "https://" else "") + urlAuthority(host, port) + basePath

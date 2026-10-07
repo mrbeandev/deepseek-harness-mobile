@@ -96,11 +96,11 @@ y las [preguntas frecuentes](https://github.com/sorsama/deepseek-harness-mobile/
 
 - Android 8.0 o superior (minSdk 26).
 - Un [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) en ejecución
-  (probado con `0.1.3-alpha.1`). **0.10.0 necesita el harness 0.1.3** — esa versión
-  dejó de registrar los fragmentos de una respuesta y los movió a un flujo en vivo que la
-  app tiene que pedir, así que la app y el harness deben actualizarse a la vez: una app
-  anterior nunca ve una respuesta escribiéndose en 0.1.3, y esta app no puede ejecutar
-  comandos de barra en 0.1.2. Consulta [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
+  en la versión `0.2.1-alpha.1`, la base del protocolo de DSH Mobile `0.13.0`.
+  Se mantienen las adaptaciones de compatibilidad para `0.2.0-rc.1`, `0.1.7-rc.x` y
+  `0.1.6-alpha.x`; las nuevas funciones de gestión necesitan soporte del harness.
+  Consulta la [compatibilidad](docs/COMPATIBILITY.md) y la
+  [validación de 0.13.0](docs/VALIDATION-0.13.0.md) para saber qué se ha comprobado.
 
 ## Inicio rápido
 

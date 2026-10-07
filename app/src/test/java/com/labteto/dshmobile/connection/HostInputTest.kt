@@ -33,12 +33,29 @@ class HostInputTest {
         assertEquals(HostInput("127.0.0.1", 3080, false), parseHostInput("http://127.0.0.1:3080"))
     }
 
+    @Test
+    fun `connection failure addresses keep the proxy path out of the port`() {
+        assertEquals(HostInput("10.0.2.2", 3192, null, "/dsh"), parseHostInput("10.0.2.2:3192/dsh"))
+        assertEquals(HostInput("10.0.2.2", 3192, false, "/dsh"), parseHostInput("http://10.0.2.2:3192/dsh/"))
+        assertEquals(HostInput("::1", 3192, true, "/dsh"), parseHostInput("https://[::1]:3192/dsh"))
+    }
+
+    @Test
+    fun `prefixed relay identity is distinct from its root and other prefixes`() {
+        val root = HostConfig("root-id", "relay", "relay.test", 443, useTls = true, relayDeviceId = "root-device")
+        val prefixed = root.copy(id = "prefix-id", basePath = "/team", relayDeviceId = "team-device")
+        org.junit.Assert.assertNotEquals(root.baseUrl, prefixed.baseUrl)
+        org.junit.Assert.assertNotEquals(root.authority, prefixed.authority)
+        org.junit.Assert.assertNotEquals(prefixed.baseUrl, prefixed.copy(basePath = "/other").baseUrl)
+        assertEquals("https://relay.test:443/team", prefixed.baseUrl)
+    }
+
     /** The harness prints its URL with a trailing slash, and the GUI's address bar carries paths. */
     @Test
     fun `paths queries and fragments are not part of the host`() {
         assertEquals(HostInput("192.168.1.20", 3080, false), parseHostInput("http://192.168.1.20:3080/"))
-        assertEquals(HostInput("agent.home", null, true), parseHostInput("https://agent.home/chat?x=1#top"))
-        assertEquals(HostInput("agent.home", null, null), parseHostInput("agent.home/chat"))
+        assertEquals(HostInput("agent.home", null, true, "/chat"), parseHostInput("https://agent.home/chat?x=1#top"))
+        assertEquals(HostInput("agent.home", null, null, "/chat"), parseHostInput("agent.home/chat"))
     }
 
     @Test

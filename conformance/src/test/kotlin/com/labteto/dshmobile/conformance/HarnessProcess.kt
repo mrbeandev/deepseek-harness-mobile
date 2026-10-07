@@ -39,14 +39,20 @@ class HarnessProcess private constructor(
     private val home: File,
     private val workspace: File,
     private val model: MockModel?,
+    private val log: ProcessLog,
+    private val reader: Thread,
 ) : AutoCloseable {
 
     /** A disposable directory the harness may use as a session workspace. */
     val workspacePath: String get() = workspace.absolutePath
 
     override fun close() {
+        val children = process.toHandle().descendants().use { it.toList() }
         process.destroy()
         if (!process.waitFor(GRACE_SECONDS, TimeUnit.SECONDS)) process.destroyForcibly()
+        children.asReversed().forEach { if (it.isAlive) it.destroyForcibly() }
+        reader.join(5000)
+        log.write()
         model?.close()
         home.deleteRecursively()
         workspace.deleteRecursively()
@@ -78,8 +84,10 @@ class HarnessProcess private constructor(
                 named.isNullOrBlank() -> listOf("../deepseek-harness", "../../deepseek-harness", "G:/LAB/deepseek-harness")
                 else -> listOf(named)
             }.map(::File)
-            val present = roots.firstOrNull { File(it, CLI_ENTRY).isFile } ?: return null
+            val present = roots.firstOrNull { File(it, CLI_ENTRY).isFile }
+                ?: if (!named.isNullOrBlank()) error("DSH_HARNESS_SRC does not name a harness checkout: $named") else return null
             if (!File(present, LIB_MARKER).isFile) {
+                check(named.isNullOrBlank()) { "DSH_HARNESS_SRC is not built: ${present.absolutePath}; run pnpm run build:lib" }
                 println(
                     "conformance: ${present.absolutePath} is not built; run `pnpm run build:lib` " +
                         "there (packages resolve to lib/, which is build output). Skipping.",
@@ -90,7 +98,11 @@ class HarnessProcess private constructor(
         }
 
         /** Whether a booted harness is possible here at all. */
-        fun available(): Boolean = checkout() != null && node() != null
+        fun available(): Boolean {
+            val source = checkout() ?: return false
+            if (!System.getenv("DSH_HARNESS_SRC").isNullOrBlank()) check(node() != null) { "Node is required for explicit conformance runs: $source" }
+            return node() != null
+        }
 
         /** The `node` executable, or null when it is not on `PATH`. */
         fun node(): String? {
@@ -128,7 +140,7 @@ class HarnessProcess private constructor(
          * @param model a scriptable model server to point the harness at, or null to leave it with
          *   a fake key and no base URL — enough to boot and serve, but not to run a turn.
          */
-        fun start(model: MockModel? = null): HarnessProcess {
+        fun start(model: MockModel? = null, patch: String? = null): HarnessProcess {
             val root = requireNotNull(checkout()) { "no harness checkout; call available() first" }
             val node = requireNotNull(node()) { "node is not on PATH" }
             val port = freePort()
@@ -141,11 +153,19 @@ class HarnessProcess private constructor(
                 File(home, "settings.yaml").writeText("llm-deepseek:\n  protocol: chat-completions\n")
             }
 
+            // Title generation shares the model provider and would consume the turn's scripted reply.
+            val patches = listOfNotNull(
+                if (model != null) "[{\"id\":\"session-title-llm\",\"disabled\":true}]" else null,
+                patch,
+            )
+            val patchArgs = patches.flatMapIndexed { index, text ->
+                val file = File(home, "conformance-$index.patch.yml").apply { writeText(text) }
+                listOf("--patch", file.absolutePath)
+            }
             val command = listOf(
                 node, "--import", tsxLoaderHref(root, node),
                 File(root, CLI_ENTRY).absolutePath,
-                "web", "--no-open", "--port", port.toString(),
-            )
+            ) + patchArgs + listOf("--profile", "web", "--no-open", "--port", port.toString())
             val builder = ProcessBuilder(command)
                 .directory(workspace)
                 .redirectErrorStream(true)
@@ -164,8 +184,13 @@ class HarnessProcess private constructor(
 
             val process = builder.start()
             val launchUrl = AtomicReference<String>()
+            val bootLog = java.util.concurrent.CopyOnWriteArrayList<String>()
+            val log = ProcessLog("harness")
             val reader = Thread {
                 process.inputStream.bufferedReader().forEachLine { line ->
+                    log.append(line)
+                    bootLog.add(line.replace(Regex("token=[A-Za-z0-9_-]+"), "token=[redacted]"))
+                    if (bootLog.size > 40) bootLog.removeAt(0)
                     READY_LINE.find(line)?.let { launchUrl.compareAndSet(null, it.groupValues[1]) }
                 }
             }
@@ -174,12 +199,20 @@ class HarnessProcess private constructor(
 
             val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(READY_TIMEOUT_SECONDS)
             while (launchUrl.get() == null && System.nanoTime() < deadline) {
-                check(process.isAlive) { "harness exited before announcing itself" }
+                if (!process.isAlive) {
+                    reader.join(1000)
+                    log.write()
+                    model?.close(); home.deleteRecursively(); workspace.deleteRecursively()
+                    error("harness exited before announcing itself: " + bootLog.joinToString("\n"))
+                }
                 Thread.sleep(POLL_MS)
             }
             val url = launchUrl.get()
             if (url == null) {
                 process.destroyForcibly()
+                reader.join(5000)
+                log.write()
+                model?.close()
                 home.deleteRecursively()
                 workspace.deleteRecursively()
                 error("harness did not print its launch line within ${READY_TIMEOUT_SECONDS}s")
@@ -194,6 +227,8 @@ class HarnessProcess private constructor(
                 home = home,
                 workspace = workspace,
                 model = model,
+                log = log,
+                reader = reader,
             )
         }
 

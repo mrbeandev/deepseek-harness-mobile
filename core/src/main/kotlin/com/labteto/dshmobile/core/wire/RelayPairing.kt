@@ -154,7 +154,7 @@ object RelayPairing {
             val moved = answered.location?.let { target.resolve(it) } ?: return RelayOrigin.None
             // Only a redirect that still points at this path is the plugin handing us its listener.
             // Anything else is some other server's routing, and following it would be guesswork.
-            if (moved.encodedPath != HEALTH_PATH) return RelayOrigin.None
+            if (!moved.encodedPath.endsWith(HEALTH_PATH) || moved.username.isNotEmpty() || moved.password.isNotEmpty()) return RelayOrigin.None
             return RelayOrigin.Redirected(originOf(moved), moved.scheme == "https")
         }
         // A relay that refuses the `Host` it was reached by is still a relay, and saying "nothing
@@ -172,17 +172,17 @@ object RelayPairing {
     }
 
     /**
-     * Scheme, host and port of [url], with no path — the form every other call takes.
+     * Deployment root of a health URL, retaining its proxy prefix.
      *
      * Through [authorityOf], because `HttpUrl.host` is unbracketed: an IPv6 origin spelled straight
      * would not parse back as a URL, and every consumer of a [RelayOrigin] parses it again.
      */
     private fun originOf(url: okhttp3.HttpUrl): String =
-        "${url.scheme}://" + authorityOf(url.host, url.port)
+        "${url.scheme}://" + authorityOf(url.host, url.port) + url.encodedPath.removeSuffix(HEALTH_PATH).trimEnd('/')
 
     /** Resolve [path] against a relay origin, or null when the origin is not a usable URL. */
     private fun relayUrl(baseUrl: String, path: String) =
-        baseUrl.trim().trimEnd('/').toHttpUrlOrNull()?.newBuilder()?.encodedPath(path)?.build()
+        runCatching { resolveHarnessUrl(baseUrl.trim(), path) }.getOrNull()
 
     private fun readClaim(response: HttpOutcome.Answered): RelayPairOutcome = when (response.status) {
         200 -> runCatching {

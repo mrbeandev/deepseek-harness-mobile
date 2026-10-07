@@ -37,6 +37,7 @@ fun EmptyHero(
     subtitle: String?,
     chips: List<String> = emptyList(),
     onChipClick: (String) -> Unit = {},
+    showPreview: Boolean = true,
 ) {
     val colors = DsTheme.colors
     Column(
@@ -59,7 +60,7 @@ fun EmptyHero(
                 textAlign = TextAlign.Center,
             )
         }
-        Text(
+        if (showPreview) Text(
             "Preview",
             style = DsType.xsmall12.copy(fontFamily = DsType.codeFont, color = colors.accent),
             color = colors.accent,

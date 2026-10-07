@@ -3,6 +3,82 @@
 All notable changes to DSH Mobile are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); the project uses SemVer.
 
+## [0.13.0] - 2026-10-08
+
+Moves the protocol baseline to DeepSeek Harness 0.2.1-alpha.1 and adds its management screens and timed questions.
+
+### Added
+
+- **Automation.** A new screen lists scheduled tasks, with search and a status filter. Each
+  task has a Rules tab for its title, prompt and timing and a Records tab for its delivery
+  history. You can delete an active task or open its session. New starts an unsent chat draft
+  that asks the agent to create a task. Schedules and run times use the device's locale, and
+  finished tasks show their last run when the host has one. The timing editor has its own
+  controls for each kind of schedule: a date and time picker, an interval amount and unit,
+  named weekdays, a time zone, and cron as an advanced field. Switching kinds keeps what you
+  entered for each one, and saving checks for changes made elsewhere.
+- **Plugin management.** Plugins opens on the installed inventory, which you can search; the
+  install and update forms open separately. You can inspect, install and update packages,
+  enable or disable bundles and single plugins, and remove installed bundles. Installs show
+  progress and logs and can be cancelled. The app keeps each install's request ID, so it can
+  pick up the result after a reconnect or a restart. Packages install disabled, and a build
+  approval names the package and the scripts waiting to run. Update opens a prefilled form, and
+  Settings shows Manage plugins even when nothing is installed.
+- **Create plugin.** When the host offers the Creator (`cordis`) preset, Create plugin opens a
+  new session with that preset and an unsent draft.
+- **Timed questions and late answers.** The countdown and Take time sit inside the question
+  card, and an expanded sheet is there when space is tight. Focusing the answer pauses the
+  countdown in either view, and editing or Take time holds it. If the host moves on before you
+  answer, you can still send a reply. Answer drafts survive an app restart, and you can reopen
+  question cards and plan previews. Cards label the paused, held, queued and settled states, and
+  an answered card keeps the question next to the answer.
+- **File, folder and session references in drafts.** The composer's @ button, or typing @,
+  opens the reference picker. It inserts a mention and saves its type, target and position with
+  the draft. Each reference type has its own icon and label, folders have a separate browse
+  action, and the picker shows empty, no-match and retry states. Mentions show a readable label
+  instead of a session URI, and chips open their file, folder or session. Text and references
+  are saved per host and session across restarts; editing inside a mention drops its reference.
+- The model picker gets a search field when more than four models are available. It matches
+  model and provider names or IDs and says so when nothing matches.
+- Markdown previews show YAML frontmatter as collapsed document properties, with a bounded
+  expanded view. An invalid header stays visible in the document.
+
+### Changed
+
+- The protocol baseline in Settings → About reads 0.2.1-alpha.1.
+- A control is hidden when the host reports its capability as unavailable or its method as
+  missing. On a 0.2.0-rc.1 host, for example, Automation is hidden while chat and questions keep
+  working. Authorization errors, HTTP 403 included, and transport errors still show.
+- Hosts can sit behind a reverse-proxy path such as `https://example.com/harness/`. Sign-in, API
+  calls, file transfers and the live connection all use that path, and saved hosts keep it.
+- Tool rows preview argument text while the model is still writing the call.
+- The goal editor has room for several lines, and the goal bar shows up to three.
+- The new Automation, Plugins and reference screens use the app's own sheets, controls and theme
+  colors. Retry appears only after a failure; a healthy Automation list has a refresh action.
+- Timing and plugin switches have accessible labels, and question headers and reference actions
+  have 48dp touch targets. Package names, file mentions and other technical identifiers keep
+  left-to-right order in right-to-left languages. Warning text in Plugins, models and goals is
+  darker in light mode so it is easier to read.
+- The new controls are translated into all 11 supported languages: English, Chinese, Hindi,
+  Spanish, French, Arabic, Bengali, Portuguese, Russian, Urdu and Thai.
+
+### Fixed
+
+- **Goal actions could silently do nothing.** The app now reads the current goal from the
+  host's `{ goal }` projection before editing, pausing, resuming, completing or clearing it.
+- **Shell and diff cards no longer reject calls because of escalation fields.** Card matching
+  no longer validates the obsolete `sandbox_permissions` and `justification` pair.
+
+### Internal
+
+- A new CI job builds the pinned harness and runs the real-host conformance suite against it.
+  New tests cover the management contracts and timed questions, and proxy routing, draft
+  references and the new UI models have local regression tests.
+- The protocol fixture is `5badb15.json`, pinned to 0.2.1-alpha.1. The older `4878cda.json`
+  fixture stays, and the pinned fixture test checks the baseline label and commit.
+- YAML frontmatter parsing uses `org.yaml:snakeyaml:2.5` with safe constructors and limits on
+  header size, nesting and aliases.
+
 ## [0.12.2] - 2026-10-01
 
 Fixes the agent preset chip, which has not appeared on any harness this app supports.
