@@ -20,8 +20,11 @@ is retained. The previous baseline for the legacy run is `0.2.0-rc.1`, at commit
 
 Validation used a local checkout of the pinned harness (`0.2.1-alpha.1`, `5badb15`)
 and a local `0.2.0-rc.1` checkout. The conformance suite launches a real host
-with isolated state and uses a deterministic model. CI defines a separate job that
-builds the pinned harness and runs `:conformance:test`; no remote CI result is claimed here.
+with isolated state and uses a deterministic model. CI has a separate job that
+builds the pinned harness on ubuntu-latest and runs `:conformance:test`. Its first run
+failed three model-turn tests because Linux session persistence needs the harness's
+native flock addon, which `build:lib` does not build. With `pnpm run build:native-system`
+added to the job, all 12 tests passed on CI.
 
 ### Functional validation before the UX fixes
 
@@ -70,7 +73,7 @@ Evidence paths in this table are relative to `build/validation-0.13.0/`.
 The UX review in `build/validation-0.13.0/ux-findings.md` recorded 24 findings:
 17 major and seven minor. Fixes were implemented in two sets. Set A covered Automation,
 Plugins and their entry points; Set B covered questions, references, model search and
-document properties. The fix-status sections record the implemented changes for UX1–UX24.
+document properties. The fix-status sections record the implemented changes for UX1-UX24.
 
 Automation now formats schedules and run times for the device locale, provides controls
 for each timing kind, and distinguishes refresh from retry. Plugins leads with inventory
@@ -126,7 +129,7 @@ Local runs require pnpm **11.7.0** on PATH, matching CI. An initial pinned run
 using pnpm 9 passed 11 tests and failed plugin installation with
 `ERR_PNPM_ADDING_TO_ROOT`; rerunning with 11.7.0 passed all 12.
 
-The final UX report, `build/ux-0.13.0/after/UX-VERIFY.md`, records **UX1–UX24 PASS**
+The final UX report, `build/ux-0.13.0/after/UX-VERIFY.md`, records **UX1-UX24 PASS**
 against a real `0.2.1-alpha.1` harness. The screenshot matrix at
 `build/ux-0.13.0/after/MATRIX.md` contains **241 screenshot/UIAutomator dump pairs**
 across light/dark themes, English/Thai/Arabic (RTL) and font scales 1.0/1.3.
@@ -197,7 +200,7 @@ visible; the old-host UI check does not itself exercise every error class.
 ### Defects found and fixed during validation
 
 The review record in `build/validation-0.13.0/review-findings.md` retains the original
-findings and their fix status. All R1–R5 findings are fixed; its opening count describes
+findings and their fix status. All R1-R5 findings are fixed; its opening count describes
 the earlier review snapshot. The result ledger records execution of the regression tests.
 
 | Finding | Correction and evidence |
@@ -262,7 +265,7 @@ its completed receipt; it proves reattachment without duplication, not replay of
   from the text/reference serialization checks.
 - Creator and New Automation stage drafts. Creating an actual plugin or scheduled
   task requires submitting that draft and the host completing the work.
-- No publication, tag, release signing or remote CI success is implied by local results.
+- Local results say nothing about release signing; the release APK is built and signed by the tag workflow.
 
 ### Setup notes
 
