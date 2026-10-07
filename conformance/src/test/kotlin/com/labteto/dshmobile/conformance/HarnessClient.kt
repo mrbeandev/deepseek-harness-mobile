@@ -20,7 +20,7 @@ import java.util.concurrent.TimeUnit
  * itself worth exercising, because `:mock-harness` implements no `GET /?token=` at all, so the
  * direct-connection authentication tier every non-relay user is on has never had an end-to-end test.
  */
-class HarnessClient(harness: HarnessProcess) : AutoCloseable {
+class HarnessClient(harness: HarnessProcess, existingCookie: String? = null) : AutoCloseable {
 
     private val http: OkHttpClient = OkHttpClient.Builder()
         .connectTimeout(15, TimeUnit.SECONDS)
@@ -32,7 +32,7 @@ class HarnessClient(harness: HarnessProcess) : AutoCloseable {
         .build()
 
     /** The browser-session cookie this client exchanged its launch token for. */
-    val cookie: String = runBlocking {
+    val cookie: String = existingCookie ?: runBlocking {
         when (val result = HarnessSession.exchange(harness.baseUrl, harness.launchToken, http)) {
             is SessionExchange.Granted -> result.cookie
             else -> error("the harness refused the launch token: $result")
