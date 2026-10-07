@@ -1,6 +1,6 @@
 package com.labteto.dshmobile.core
 
-/** Core module placeholder for the baseline build; wire protocol code lands here. */
+/** Verified upstream baseline for the mobile wire implementation. */
 object DshCore {
     /**
      * The harness release this client's DTOs and call shapes were ported from and verified
@@ -23,7 +23,8 @@ object DshCore {
      *
      * 0.2.0 moved the baseline without changing anything this client sends or reads. Hosts on
      * 0.1.7-rc.x and 0.1.6 still work as they did with client 0.12.0.
+     * 0.2.1 adds automation/plugin management and call-keyed timed questions.
      */
-    const val PROTOCOL_BASELINE = "0.2.0-rc.1"
-    const val PROTOCOL_COMMIT = "4878cdabd87d4041bdaff61d04c966883b9fd07a"
+    const val PROTOCOL_BASELINE = "0.2.1-alpha.1"
+    const val PROTOCOL_COMMIT = "5badb15009ae1756c3afe0ae0cef1faafc290ccc"
 }

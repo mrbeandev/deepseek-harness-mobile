@@ -65,7 +65,7 @@ object HarnessSession {
             .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .build()
-        val url = baseUrl.trimEnd('/') + "/?token=" + java.net.URLEncoder.encode(token, "UTF-8")
+        val url = resolveHarnessUrl(baseUrl, "/").newBuilder().addQueryParameter("token", token).build()
         val request = Request.Builder().url(url).get().build()
         try {
             exchanger.newCall(request).execute().use { response ->
