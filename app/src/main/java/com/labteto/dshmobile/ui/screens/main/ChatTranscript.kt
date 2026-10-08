@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import com.labteto.dshmobile.R
 import com.labteto.dshmobile.core.session.AssistantMessageNode
 import com.labteto.dshmobile.core.session.ConversationSnapshot
+import com.labteto.dshmobile.core.session.UserMessageNode
 import com.labteto.dshmobile.ui.components.DsButton
 import com.labteto.dshmobile.ui.components.DsButtonSize
 import com.labteto.dshmobile.ui.components.DsButtonVariant
@@ -71,6 +72,9 @@ private const val LOAD_OLDER_THRESHOLD = 2
  * row or two. Past that the reader asks, via the row at the head of the list.
  */
 private const val MAX_AUTO_PAGES = 1
+
+/** Pages fetched back-to-back to get past a rewind's hidden range before a row appears. */
+private const val MAX_CUT_PAGES = 12
 
 /**
  * The conversation itself.
@@ -136,6 +140,24 @@ internal fun ChatTranscript(
     var autoPages by rememberSaveable(sessionId) { mutableIntStateOf(0) }
     val canPage = hasMore && !loading && !loadingOlder && !loadOlderFailed
     val autoPagingExhausted = hasMore && !loading && autoPages >= MAX_AUTO_PAGES
+
+    // A rewind hides everything from its target through its marker. A page that lands entirely
+    // inside that range adds events and no rows, so a tap on "Load older" looks like it did
+    // nothing. When the newest visible row is the rewind divider and a page just landed without
+    // changing the row count, keep paging (bounded) until something above the cut appears — the
+    // browser has the whole log and never shows this gap.
+    val rowCount = rows.size
+    val dividerOnTop = rows.lastOrNull().let { it is UserMessageNode && it.isRewindMarker }
+    var lastPagedRowCount by remember(sessionId) { mutableIntStateOf(-1) }
+    var cutPages by remember(sessionId) { mutableIntStateOf(0) }
+    LaunchedEffect(rowCount, loadingOlder, hasMore, dividerOnTop) {
+        if (loadingOlder || !hasMore || loadOlderFailed || !dividerOnTop) return@LaunchedEffect
+        if (lastPagedRowCount == -1) { lastPagedRowCount = rowCount; return@LaunchedEffect }
+        if (rowCount != lastPagedRowCount) { lastPagedRowCount = rowCount; cutPages = 0; return@LaunchedEffect }
+        if (cutPages >= MAX_CUT_PAGES) return@LaunchedEffect
+        cutPages++
+        onLoadOlder()
+    }
     LaunchedEffect(listState, sessionId, canPage) {
         if (!canPage) return@LaunchedEffect
         snapshotFlow {

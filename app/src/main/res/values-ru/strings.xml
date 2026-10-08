@@ -540,4 +540,16 @@
     <string name="harness_automation_history_error">Не удалось загрузить записи о доставке.</string>
     <string name="harness_automation_history_not_found">Эта задача больше недоступна.</string>
     <string name="harness_automation_history_cursor_error">Записи обновлены.</string>
+
+    <!-- dsh-rewind picker (port of the plugin's web popover) -->
+    <string name="rewind_marker">Откат до этого места</string>
+    <string name="rewind_no_text">(без текста)</string>
+    <string name="rewind_to">Откатить к: %1$s</string>
+    <string name="rewind_mode_chat">Откатить только разговор</string>
+    <string name="rewind_mode_chat_hint">Обрезать только контекст модели; файлы рабочей области не трогаются</string>
+    <string name="rewind_mode_both">Откатить разговор и код</string>
+    <string name="rewind_mode_both_hint">Обрезать контекст и восстановить файлы рабочей области</string>
+    <string name="rewind_checking">Проверка изменений файлов…</string>
+    <string name="rewind_no_changes">После этого сообщения нет отслеживаемых изменений файлов; откат только разговора</string>
+    <string name="rewind_impact_failed">Не удалось получить список изменений: %1$s</string>
 </resources>

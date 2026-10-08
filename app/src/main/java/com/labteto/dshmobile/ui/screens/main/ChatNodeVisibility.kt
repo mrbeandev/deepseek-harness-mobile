@@ -10,6 +10,8 @@ import com.labteto.dshmobile.core.session.GoalNode
 import com.labteto.dshmobile.core.session.OtherNode
 import com.labteto.dshmobile.core.session.PlanModeNode
 import com.labteto.dshmobile.core.session.RetryNode
+import com.labteto.dshmobile.core.session.REWIND_SOURCE_KIND
+import com.labteto.dshmobile.core.session.RewindCuts
 import com.labteto.dshmobile.core.session.SubagentNode
 import com.labteto.dshmobile.core.session.TitleNode
 import com.labteto.dshmobile.core.session.TodoNode
@@ -59,8 +61,17 @@ internal fun AssistantMessageNode.showsToolPreview(
 
 internal fun renderableChatNodes(nodes: List<ChatNode>, running: Boolean): List<ChatNode> {
     val knownToolCallIds = nodes.filterIsInstance<ToolCallNode>().mapTo(mutableSetOf()) { it.callId }
-    return nodes.filter { it.rendersContent(running, knownToolCallIds) }
+    // What a rewind withdrew. The harness still serves those events; the browser hides them from
+    // the command ledger, and so does this. The marker the rewind appended stays, drawn as a
+    // divider rather than an empty user bubble.
+    val cut = RewindCuts.hiddenSeqs(nodes)
+    return nodes.filter { node ->
+        node.seq !in cut && ((node is UserMessageNode && node.isRewindMarker) || node.rendersContent(running, knownToolCallIds))
+    }
 }
+
+/** The `(empty message)` row `dsh-rewind` appends to mark where the conversation was cut back to. */
+internal val UserMessageNode.isRewindMarker: Boolean get() = sourceKind == REWIND_SOURCE_KIND
 
 internal fun ChatNode.rendersContent(
     running: Boolean = false,

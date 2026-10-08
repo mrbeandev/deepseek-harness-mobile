@@ -540,4 +540,16 @@
     <string name="harness_automation_history_error">โหลดประวัติการส่งไม่สำเร็จ</string>
     <string name="harness_automation_history_not_found">งานนี้ไม่พร้อมใช้งานแล้ว</string>
     <string name="harness_automation_history_cursor_error">ประวัติมีการอัปเดตแล้ว</string>
+
+    <!-- dsh-rewind picker (port of the plugin's web popover) -->
+    <string name="rewind_marker">ย้อนกลับมาถึงตรงนี้</string>
+    <string name="rewind_no_text">(ไม่มีข้อความ)</string>
+    <string name="rewind_to">ย้อนกลับไปที่: %1$s</string>
+    <string name="rewind_mode_chat">ย้อนกลับเฉพาะบทสนทนา</string>
+    <string name="rewind_mode_chat_hint">ตัดเฉพาะบริบทของโมเดล ไฟล์ในเวิร์กสเปซไม่ถูกแตะต้อง</string>
+    <string name="rewind_mode_both">ย้อนกลับบทสนทนาและโค้ด</string>
+    <string name="rewind_mode_both_hint">ตัดบริบทและกู้คืนไฟล์ในเวิร์กสเปซ</string>
+    <string name="rewind_checking">กำลังตรวจสอบการเปลี่ยนแปลงไฟล์…</string>
+    <string name="rewind_no_changes">ไม่มีการเปลี่ยนแปลงไฟล์ที่ติดตามหลังข้อความนี้ ย้อนกลับเฉพาะบทสนทนา</string>
+    <string name="rewind_impact_failed">ไม่สามารถดึงรายการผลกระทบได้: %1$s</string>
 </resources>

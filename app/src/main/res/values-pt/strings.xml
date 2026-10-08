@@ -540,4 +540,16 @@
     <string name="harness_automation_history_error">Não foi possível carregar os registos de entrega.</string>
     <string name="harness_automation_history_not_found">Esta tarefa já não está disponível.</string>
     <string name="harness_automation_history_cursor_error">Os registos foram atualizados.</string>
+
+    <!-- dsh-rewind picker (port of the plugin's web popover) -->
+    <string name="rewind_marker">Retrocedido até aqui</string>
+    <string name="rewind_no_text">(sem texto)</string>
+    <string name="rewind_to">Retroceder para: %1$s</string>
+    <string name="rewind_mode_chat">Retroceder apenas a conversa</string>
+    <string name="rewind_mode_chat_hint">Corta apenas o contexto do modelo; os arquivos do espaço de trabalho ficam intactos</string>
+    <string name="rewind_mode_both">Retroceder conversa e código</string>
+    <string name="rewind_mode_both_hint">Corta o contexto e restaura os arquivos do espaço de trabalho</string>
+    <string name="rewind_checking">Verificando alterações de arquivos…</string>
+    <string name="rewind_no_changes">Nenhuma alteração de arquivo rastreada após esta mensagem; retrocesso apenas da conversa</string>
+    <string name="rewind_impact_failed">Não foi possível obter a lista de impacto: %1$s</string>
 </resources>

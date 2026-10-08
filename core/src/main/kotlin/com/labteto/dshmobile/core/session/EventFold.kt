@@ -32,6 +32,24 @@ import kotlinx.serialization.json.jsonPrimitive
  *
  * The fold is pure: same events → same snapshot.
  */
+/**
+ * Whether an event becomes a transcript node.
+ *
+ * A surface replacement (compaction's summary, a system-prompt rewrite) describes the model's view
+ * and is not a row; `effectiveSurface` carries it. The one exception is a rewind marker: the row
+ * `dsh-rewind` appends is where the reader's conversation was cut back to, and the transcript draws
+ * it as a divider — so it folds like any other user message, with its `surfaceOp` still honoured
+ * for the model-visible surface.
+ */
+internal fun SessionEventEnvelope.foldsToNode(): Boolean =
+    !isSurfaceReplacement() || (type == "user/message" && sourceKindOf() == REWIND_SOURCE_KIND)
+
+private fun SessionEventEnvelope.sourceKindOf(): String? =
+    ((data as? JsonObject)?.get("source") as? JsonObject)?.get("kind")?.jsonPrimitive?.contentOrNull
+
+/** `source.kind` of the marker message `dsh-rewind` appends. */
+const val REWIND_SOURCE_KIND = "dsh-rewind"
+
 class EventFold(private val sessionId: String) {
 
     /**
@@ -42,7 +60,7 @@ class EventFold(private val sessionId: String) {
      */
     fun fold(events: List<SessionEventEnvelope>, transient: List<SessionEventEnvelope> = emptyList()): ConversationSnapshot {
         val state = FoldState(sessionId)
-        events.filterNot { it.isSurfaceReplacement() }.forEach { state.apply(it) }
+        events.filter { it.foldsToNode() }.forEach { state.apply(it) }
         transient.forEach { state.applyTransient(it) }
         return state.snapshot().copy(journal = events.toList(), effectiveSurface = effectiveSurfaceEvents(events), lastSeq = events.lastOrNull()?.seq ?: -1,
             gap = events.zipWithNext().any { (a, b) -> b.seq > a.seq + 1 })
@@ -72,7 +90,7 @@ class EventFold(private val sessionId: String) {
             journal.add(event)
             if (initialJournalAvailable) current = EventFold(sessionId).fold(journal)
             else {
-                if (!event.isSurfaceReplacement()) state.apply(event)
+                if (event.foldsToNode()) state.apply(event)
                 current = state.snapshot().copy(journal = journal.toList(), effectiveSurface = effectiveSurfaceEvents(journal), lastSeq = event.seq)
             }
             folded = event.seq

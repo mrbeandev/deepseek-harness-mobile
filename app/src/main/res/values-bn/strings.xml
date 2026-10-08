@@ -540,4 +540,16 @@
     <string name="harness_automation_history_error">ডেলিভারি রেকর্ড লোড করা যায়নি।</string>
     <string name="harness_automation_history_not_found">এই কাজটি আর পাওয়া যাচ্ছে না।</string>
     <string name="harness_automation_history_cursor_error">রেকর্ড আপডেট করা হয়েছে।</string>
+
+    <!-- dsh-rewind picker (port of the plugin's web popover) -->
+    <string name="rewind_marker">এখানে পর্যন্ত রিওয়াইন্ড করা হয়েছে</string>
+    <string name="rewind_no_text">(কোনো টেক্সট নেই)</string>
+    <string name="rewind_to">রিওয়াইন্ড করুন: %1$s</string>
+    <string name="rewind_mode_chat">শুধু কথোপকথন রিওয়াইন্ড করুন</string>
+    <string name="rewind_mode_chat_hint">শুধু মডেল কনটেক্সট কাটুন; ওয়ার্কস্পেস ফাইল অপরিবর্তিত থাকবে</string>
+    <string name="rewind_mode_both">কথোপকথন ও কোড রিওয়াইন্ড করুন</string>
+    <string name="rewind_mode_both_hint">কনটেক্সট কাটুন এবং ওয়ার্কস্পেস ফাইল পুনরুদ্ধার করুন</string>
+    <string name="rewind_checking">ফাইল পরিবর্তন পরীক্ষা করা হচ্ছে…</string>
+    <string name="rewind_no_changes">এই বার্তার পরে ট্র্যাক করা কোনো ফাইল পরিবর্তন নেই; শুধু কথোপকথন রিওয়াইন্ড</string>
+    <string name="rewind_impact_failed">প্রভাব তালিকা আনা যায়নি: %1$s</string>
 </resources>

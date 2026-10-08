@@ -21,6 +21,7 @@ import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.ThumbDown
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -129,10 +130,10 @@ internal fun ChatNodeItem(node: ChatNode, context: ChatNodeContext) {
                 // Injected context is not the reader's turn: it goes in a collapsed disclosure row
                 // so the conversation still reads as a conversation. The predicate lives on the
                 // node (core) because it is a wire fact about `source.kind`, not a UI choice.
-                if (node.isInjectedContext) {
-                    InjectedContextRow(node, text)
-                } else {
-                    UserBubble(text)
+                when {
+                    node.isRewindMarker -> RewindMarkerRow()
+                    node.isInjectedContext -> InjectedContextRow(node, text)
+                    else -> UserBubble(text)
                 }
             }
         }
@@ -499,6 +500,25 @@ private fun CompactionRow(node: CompactionNode) {
         onToggle = { expanded = !expanded },
     ) {
         if (!summaryText.isNullOrBlank()) MarkdownText(summaryText)
+    }
+}
+
+/** Where a rewind cut the conversation: everything above is what the model sees now. */
+@Composable
+private fun RewindMarkerRow() {
+    val colors = DsTheme.colors
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.borderL1)
+        Text(
+            stringResource(R.string.rewind_marker),
+            style = DsType.caption11,
+            color = colors.labelTertiary,
+        )
+        HorizontalDivider(modifier = Modifier.weight(1f), color = colors.borderL1)
     }
 }
 
