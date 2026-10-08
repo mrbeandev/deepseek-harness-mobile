@@ -564,4 +564,6 @@
     <string name="details_copy_link">نسخ الرابط</string>
     <string name="chat_model_label">النموذج</string>
     <string name="panel_empty_folder">هذا المجلد فارغ</string>
+    <string name="panel_preview_hint">انقر على ملف في الملفات لفتحه هنا</string>
+    <string name="panel_open_host_failed">تعذر على harness فتح هذا الملف على جهازه — قد لا توجد جلسة سطح مكتب هناك.</string>
 </resources>

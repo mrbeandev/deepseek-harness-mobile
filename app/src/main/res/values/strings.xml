@@ -566,4 +566,6 @@
     <string name="details_copy_link">Copy link</string>
     <string name="chat_model_label">Model</string>
     <string name="panel_empty_folder">This folder is empty</string>
+    <string name="panel_preview_hint">Tap a file in Files to open it here</string>
+    <string name="panel_open_host_failed">The harness could not open this file on its computer — there may be no desktop session there.</string>
 </resources>

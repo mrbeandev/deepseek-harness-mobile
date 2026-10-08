@@ -564,4 +564,6 @@
     <string name="details_copy_link">Copiar link</string>
     <string name="chat_model_label">Modelo</string>
     <string name="panel_empty_folder">Esta pasta está vazia</string>
+    <string name="panel_preview_hint">Toque em um arquivo em Arquivos para abri-lo aqui</string>
+    <string name="panel_open_host_failed">O harness não conseguiu abrir este arquivo no computador dele — talvez não haja uma sessão de desktop lá.</string>
 </resources>

@@ -333,6 +333,28 @@ internal object FeatherIcons {
         }
     }
 
+
+    /** feather:external-link */
+    val ExternalLink: ImageVector by lazy {
+        feather("ExternalLink") {
+            moveTo(18f, 13f); lineTo(18f, 19f); curveTo(18f, 20.1f, 17.1f, 21f, 16f, 21f); lineTo(5f, 21f)
+            curveTo(3.9f, 21f, 3f, 20.1f, 3f, 19f); lineTo(3f, 8f); curveTo(3f, 6.9f, 3.9f, 6f, 5f, 6f); lineTo(11f, 6f)
+            moveTo(15f, 3f); lineTo(21f, 3f); lineTo(21f, 9f)
+            moveTo(10f, 14f); lineTo(21f, 3f)
+        }
+    }
+
+    /** feather:image */
+    val Image: ImageVector by lazy {
+        feather("Image") {
+            moveTo(5f, 3f); lineTo(19f, 3f); curveTo(20.1f, 3f, 21f, 3.9f, 21f, 5f); lineTo(21f, 19f)
+            curveTo(21f, 20.1f, 20.1f, 21f, 19f, 21f); lineTo(5f, 21f); curveTo(3.9f, 21f, 3f, 20.1f, 3f, 19f)
+            lineTo(3f, 5f); curveTo(3f, 3.9f, 3.9f, 3f, 5f, 3f); close()
+            moveTo(10f, 8.5f); arcTo(1.5f, 1.5f, 0f, true, true, 7f, 8.5f); arcTo(1.5f, 1.5f, 0f, true, true, 10f, 8.5f); close()
+            moveTo(21f, 15f); lineTo(16f, 10f); lineTo(5f, 21f)
+        }
+    }
+
 }
 
 // ---------------------------------------------------------------------------

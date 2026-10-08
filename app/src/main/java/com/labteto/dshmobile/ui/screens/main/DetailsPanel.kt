@@ -464,8 +464,9 @@ private fun SessionCard(
                 }
             }
             session.agentPreset?.let {
+                // Pressable only while the harness still lets it change (a blank session).
                 MetaRow(stringResource(R.string.details_preset_label)) {
-                    DsPill(text = agentPresetLabel(it, presets), onClick = onOpenPresets)
+                    DsPill(text = agentPresetLabel(it, presets), onClick = if (session.blank) onOpenPresets else null)
                 }
             }
         }

@@ -47,6 +47,8 @@ import com.labteto.dshmobile.ui.components.FeatherIcons
 import com.labteto.dshmobile.ui.theme.DsShapes
 import com.labteto.dshmobile.ui.theme.DsSpacing
 import com.labteto.dshmobile.ui.theme.DsType
+import androidx.compose.ui.unit.sp
+import com.labteto.dshmobile.ui.components.DsCard
 import com.labteto.dshmobile.ui.components.MarkdownText
 import com.labteto.dshmobile.ui.theme.DsTheme
 import kotlinx.coroutines.*
@@ -169,6 +171,7 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
                     selectedKey = state.section.toString(),
                     onSelect = { state.section = it.toInt() },
                     role = Role.Tab,
+                    stretch = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
                 when (state.section) {
@@ -258,7 +261,7 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
                     }
                     1 -> {
                         if (state.previews.isEmpty()) {
-                            EmptyHero(headline = stringResource(R.string.panel_preview_empty), subtitle = null, showPreview = false)
+                            EmptyHero(headline = stringResource(R.string.panel_preview_empty), subtitle = stringResource(R.string.panel_preview_hint), showPreview = false)
                         } else {
                             // Open files as pills; the live one is selected.
                             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(DsSpacing.xsmall)) {
@@ -272,26 +275,12 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
                             }
                             val index = state.selectedPreview.coerceIn(0, state.previews.lastIndex)
                             val preview = state.previews[index]
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text(
-                                    technicalDisplay(preview.path),
-                                    style = DsType.caption11,
-                                    color = colors.labelCaption,
-                                    modifier = Modifier.weight(1f),
-                                    softWrap = true,
-                                )
-                                DsIconButton(
-                                    icon = FeatherIcons.RefreshCw,
-                                    contentDescription = stringResource(R.string.common_retry),
-                                    onClick = { preview.stat = null; preview.text = null; preview.bytes = null },
-                                )
-                                DsIconButton(
-                                    icon = Icons.Filled.Close,
-                                    contentDescription = stringResource(R.string.common_close),
-                                    onClick = { state.previews.removeAt(index); state.selectedPreview = (index - 1).coerceAtLeast(0) },
+                            key(preview) {
+                                DocumentPreview(
+                                    store, key, preview, Modifier.weight(1f),
+                                    onClose = { state.previews.removeAt(index); state.selectedPreview = (index - 1).coerceAtLeast(0) },
                                 )
                             }
-                            key(preview) { DocumentPreview(store, key, preview, Modifier.weight(1f)) }
                         }
                     }
                     2 -> TerminalPanel(store, state, Modifier.weight(1f))
@@ -301,9 +290,20 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
 }
 
 @Composable
-private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewTab, modifier: Modifier) {
+private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewTab, modifier: Modifier, onClose: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val colors = DsTheme.colors
+    // "Open on host" needs a desktop on the harness computer. A headless host (a server behind a
+    // tunnel, a container) says so up front through `canOpenWorkspacePath`, and the button is
+    // withheld rather than offered and failed. Null while the answer is still in flight.
+    var canOpenOnHost by remember(key.host) { mutableStateOf<Boolean?>(null) }
+    LaunchedEffect(key.host) {
+        canOpenOnHost = runCatching {
+            store.apiForHost(key.host)?.sessionCanOpenWorkspacePath()?.let { (it as? RpcResult.Ok)?.value } ?: false
+        }.getOrDefault(false)
+    }
+    val openFailed = stringResource(R.string.panel_open_host_failed)
     val extension = tab.path.substringAfterLast('.', "").lowercase()
     val binary = extension in setOf("png", "jpg", "jpeg", "webp", "gif", "pdf")
     fun load(more: Boolean = false) {
@@ -338,15 +338,56 @@ private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewT
     }
     LaunchedEffect(tab) { load() }
     LaunchedEffect(tab.stat) { if (tab.stat == null) load() }
-    Column(modifier.fillMaxWidth()) {
-        SelectionContainer { Text(technicalDisplay(tab.path), Modifier.padding(horizontal = 16.dp), style = MaterialTheme.typography.bodySmall) }
-        if (tab.busy) LinearProgressIndicator(Modifier.fillMaxWidth())
-        tab.error?.let { Text(it, Modifier.padding(16.dp), color = MaterialTheme.colorScheme.error) }
-        TextButton(onClick = { scope.launch {
-            try { store.apiForHost(key.host)?.sessionOpenWorkspacePath(key.sessionId, tab.path)?.requireValue() }
-            catch (e: CancellationException) { throw e }
-            catch (e: Exception) { tab.error = e.message }
-        } }) { Text(stringResource(R.string.panel_open_host)) }
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(DsSpacing.small)) {
+        // File header: name, path and size on the left; the three actions on the right.
+        DsCard(verticalArrangement = Arrangement.spacedBy(DsSpacing.tiny)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    if (binary) FeatherIcons.Image else FeatherIcons.FileText,
+                    null,
+                    Modifier.size(18.dp),
+                    tint = colors.labelTertiary,
+                )
+                Spacer(Modifier.width(DsSpacing.small))
+                Column(Modifier.weight(1f)) {
+                    val name = tab.path.substringAfterLast('/').substringAfterLast('\\')
+                    Text(technicalDisplay(name), style = DsType.std14Strong, color = colors.labelPrimary)
+                    // The folder it is in, when it is in one; a root file would only repeat its name.
+                    val folder = tab.path.replace('\\', '/').substringBeforeLast('/', "")
+                    val meta = listOfNotNull(
+                        folder.takeIf { it.isNotEmpty() }?.let { technicalDisplay("$it/") },
+                        tab.stat?.bytes?.let { formatBytes(it) },
+                    ).joinToString(" · ")
+                    if (meta.isNotEmpty()) {
+                        SelectionContainer {
+                            Text(meta, style = DsType.caption11, color = colors.labelCaption, softWrap = true)
+                        }
+                    }
+                }
+                if (canOpenOnHost == true) DsIconButton(
+                    icon = FeatherIcons.ExternalLink,
+                    contentDescription = stringResource(R.string.panel_open_host),
+                    onClick = { scope.launch {
+                        try { store.apiForHost(key.host)?.sessionOpenWorkspacePath(key.sessionId, tab.path)?.requireValue() }
+                        catch (e: CancellationException) { throw e }
+                        catch (e: Exception) { tab.error = openFailed }
+                    } },
+                )
+                DsIconButton(
+                    icon = FeatherIcons.RefreshCw,
+                    contentDescription = stringResource(R.string.common_retry),
+                    onClick = { tab.stat = null; tab.text = null; tab.bytes = null },
+                    enabled = !tab.busy,
+                )
+                DsIconButton(
+                    icon = Icons.Filled.Close,
+                    contentDescription = stringResource(R.string.common_close),
+                    onClick = onClose,
+                )
+            }
+        }
+        if (tab.busy) LinearProgressIndicator(Modifier.fillMaxWidth(), color = colors.accent, trackColor = colors.borderL1)
+        tab.error?.let { Text(it, style = DsType.small13, color = colors.error) }
         when {
             extension == "pdf" && tab.bytes != null -> PdfPreview(tab.bytes!!, Modifier.weight(1f))
             binary && tab.bytes != null -> {
@@ -402,12 +443,46 @@ private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewT
                 }, update = { it.loadDataWithBaseURL(base.toString(), tab.text.orEmpty(), if (extension == "svg") "image/svg+xml" else "text/html", "utf-8", null) },
                     onRelease = { it.destroy() })
             }
-            tab.text != null -> SelectionContainer(Modifier.weight(1f).verticalScroll(tab.scroll).padding(16.dp)) {
-                if (extension in setOf("md", "markdown")) DocumentMarkdown(tab.text.orEmpty())
-                else Text(tab.text.orEmpty(), fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace)
+            tab.text != null -> {
+                // Markdown reads as a document; everything else is code, in the app's code font on
+                // a code background with the file's own line breaks, scrollable both ways.
+                val markdown = extension in setOf("md", "markdown")
+                Box(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .clip(DsShapes.block)
+                        .background(if (markdown) androidx.compose.ui.graphics.Color.Transparent else colors.bgLayer1)
+                        .then(if (markdown) Modifier else Modifier.border(1.dp, colors.borderL2, DsShapes.block)),
+                ) {
+                    SelectionContainer(
+                        Modifier
+                            .fillMaxSize()
+                            .verticalScroll(tab.scroll)
+                            .then(if (markdown) Modifier else Modifier.horizontalScroll(rememberScrollState()))
+                            .padding(DsSpacing.medium),
+                    ) {
+                        if (markdown) DocumentMarkdown(tab.text.orEmpty())
+                        else Text(
+                            tab.text.orEmpty(),
+                            style = DsType.caption11.copy(fontFamily = DsType.codeFont, fontSize = 12.sp, lineHeight = 18.sp),
+                            color = colors.labelPrimary,
+                            softWrap = false,
+                        )
+                    }
+                }
             }
         }
-        if (!tab.eof && tab.text != null) TextButton(onClick = { load(true) }, enabled = !tab.busy) { Text(stringResource(R.string.panel_more)) }
+        if (!tab.eof && tab.text != null) {
+            DsButton(
+                text = stringResource(R.string.panel_more),
+                onClick = { load(true) },
+                enabled = !tab.busy,
+                variant = DsButtonVariant.Outline,
+                size = DsButtonSize.Small,
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
 

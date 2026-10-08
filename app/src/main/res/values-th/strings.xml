@@ -564,4 +564,6 @@
     <string name="details_copy_link">คัดลอกลิงก์</string>
     <string name="chat_model_label">โมเดล</string>
     <string name="panel_empty_folder">โฟลเดอร์นี้ว่างเปล่า</string>
+    <string name="panel_preview_hint">แตะไฟล์ในแท็บไฟล์เพื่อเปิดที่นี่</string>
+    <string name="panel_open_host_failed">harness ไม่สามารถเปิดไฟล์นี้บนคอมพิวเตอร์ของมันได้ — อาจไม่มีเซสชันเดสก์ท็อปที่นั่น</string>
 </resources>

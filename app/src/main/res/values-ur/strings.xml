@@ -564,4 +564,6 @@
     <string name="details_copy_link">لنک کاپی کریں</string>
     <string name="chat_model_label">ماڈل</string>
     <string name="panel_empty_folder">یہ فولڈر خالی ہے</string>
+    <string name="panel_preview_hint">یہاں کھولنے کے لیے فائلز میں کسی فائل پر ٹیپ کریں</string>
+    <string name="panel_open_host_failed">harness اپنے کمپیوٹر پر یہ فائل نہیں کھول سکا — وہاں شاید کوئی ڈیسک ٹاپ سیشن نہیں ہے۔</string>
 </resources>

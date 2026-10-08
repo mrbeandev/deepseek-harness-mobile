@@ -564,4 +564,6 @@
     <string name="details_copy_link">复制链接</string>
     <string name="chat_model_label">模型</string>
     <string name="panel_empty_folder">此文件夹为空</string>
+    <string name="panel_preview_hint">在“文件”中点击一个文件即可在此打开</string>
+    <string name="panel_open_host_failed">harness 无法在其电脑上打开此文件——那里可能没有桌面会话。</string>
 </resources>
