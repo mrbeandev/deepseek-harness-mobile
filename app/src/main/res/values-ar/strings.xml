@@ -566,4 +566,7 @@
     <string name="panel_empty_folder">هذا المجلد فارغ</string>
     <string name="panel_preview_hint">انقر على ملف في الملفات لفتحه هنا</string>
     <string name="panel_open_host_failed">تعذر على harness فتح هذا الملف على جهازه — قد لا توجد جلسة سطح مكتب هناك.</string>
+    <string name="settings_update_check_now">تحقق الآن</string>
+    <string name="settings_update_up_to_date">لديك أحدث إصدار.</string>
+    <string name="settings_update_unreachable">تعذر الوصول إلى GitHub.</string>
 </resources>

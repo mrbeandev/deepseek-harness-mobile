@@ -74,6 +74,26 @@ import kotlin.math.pow
 val LocalFileOpener = staticCompositionLocalOf<(String) -> Unit> { {} }
 
 /**
+ * Where a workspace reference leads: a folder goes to the Files browser at that directory, a file
+ * to the Preview. Defaults to the file opener so a host that registers only one still works.
+ */
+val LocalFolderOpener = staticCompositionLocalOf<((String) -> Unit)?> { null }
+
+/**
+ * Whether a workspace reference names a folder.
+ *
+ * The harness writes folder references with a trailing slash in its own file-reference grammar;
+ * a model may omit it, so a last segment with no extension is read as a folder too. `Makefile`
+ * and `LICENSE` are the known casualties, and they open in Files where one tap reaches them.
+ */
+fun isFolderReference(path: String): Boolean {
+    val trimmed = path.trim()
+    if (trimmed.endsWith('/')) return true
+    val last = trimmed.substringAfterLast('/')
+    return last.isNotEmpty() && !last.contains('.')
+}
+
+/**
  * Block-level Markdown renderer: fenced code blocks, #-#### headings, bullet and
  * ordered lists, blockquotes, and paragraphs with inline **bold**, *italic*,
  * `code` chips and [links](https://example.com). Tables render as plain text.
@@ -243,6 +263,7 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
         buildInlineContent(text, codeStyle, colors)
     }
     val openFile = LocalFileOpener.current
+    val openFolder = LocalFolderOpener.current
     val uriHandler = LocalUriHandler.current
     val hasLinks = remember(result) { result.getStringAnnotations("url", 0, result.length).isNotEmpty() }
     // Each pill's width is its label at the pill's own (slightly smaller, mono) size plus icon
@@ -305,7 +326,9 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
                     // `intent:`/`file:` past this handler by dressing it up as a link.
                     val url = safeHttpUrl(raw)
                     if (url != null) runCatching { uriHandler.openUri(url) }
-                    else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let(openFile)
+                    else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let { path ->
+                        if (isFolderReference(path) && openFolder != null) openFolder(path) else openFile(path)
+                    }
                 }
             }
         },
@@ -356,7 +379,7 @@ private const val FILE_PILL_ID = "dsh.file-pill"
 @Composable
 private fun FilePill(path: String, label: String, style: TextStyle) {
     val colors = DsTheme.colors
-    val folder = path.endsWith('/') || !path.substringAfterLast('/').contains('.')
+    val folder = isFolderReference(path)
     Row(
         Modifier
             .clip(DsShapes.pill)

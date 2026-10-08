@@ -33,6 +33,7 @@ class AppViewModel @Inject constructor(
     /** A newer release to offer, or null. See [UpdateChecker]. */
     val availableUpdate: StateFlow<AvailableUpdate?> = updateChecker.available
 
+    /** Safe to call on every resume: the checker rate-limits itself. */
     fun checkForUpdate(currentVersion: String) {
         viewModelScope.launch { updateChecker.checkOnce(currentVersion) }
     }

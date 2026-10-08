@@ -7,6 +7,7 @@ import com.labteto.dshmobile.connection.ConnectionManager
 import com.labteto.dshmobile.connection.ConnectionUiState
 import com.labteto.dshmobile.connection.HostsStore
 import com.labteto.dshmobile.connection.RelayCredentialStore
+import com.labteto.dshmobile.update.UpdateChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -46,7 +47,12 @@ class SettingsViewModel @Inject constructor(
     private val hostsStore: HostsStore,
     private val credentials: RelayCredentialStore,
     private val connectionManager: ConnectionManager,
+    private val updateChecker: UpdateChecker,
 ) : ViewModel() {
+
+    /** The manual update check; see [UpdateChecker.checkNow]. */
+    suspend fun checkForUpdateNow(currentVersion: String): UpdateChecker.CheckOutcome =
+        updateChecker.checkNow(currentVersion)
 
     private val _state = MutableStateFlow(AppSettings())
     val state: StateFlow<AppSettings> = _state.asStateFlow()

@@ -414,8 +414,12 @@ fun ChatScreen(
     androidx.compose.runtime.CompositionLocalProvider(
         com.labteto.dshmobile.ui.media.LocalAttachmentScope provides (composer.key.host to composer.key.sessionId),
         com.labteto.dshmobile.ui.components.LocalFileOpener provides { path: String ->
-        store.panels.get(composer.key).open(path); panelKey = composer.key
-    }) {
+            store.panels.get(composer.key).open(path); panelKey = composer.key
+        },
+        com.labteto.dshmobile.ui.components.LocalFolderOpener provides { path: String ->
+            store.panels.get(composer.key).browse(path); panelKey = composer.key
+        },
+    ) {
     Surface(modifier = Modifier.fillMaxSize(), color = colors.bgBase) {
         // The activity draws edge to edge, so every top-level surface has to consume the insets
         // itself or the chrome ends up underneath the status bar. safeDrawing covers the status

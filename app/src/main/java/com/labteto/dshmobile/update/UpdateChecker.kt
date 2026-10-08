@@ -73,21 +73,47 @@ class UpdateChecker @Inject constructor(
     /** The update to offer, or null when there is none, none wanted, or none confirmed yet. */
     val available: StateFlow<AvailableUpdate?> = _available.asStateFlow()
 
-    /** Run at most once per process; the release list does not change while the app is open. */
+    /** When the automatic check last ran, so a warm reopen can decide whether to run it again. */
     @Volatile
-    private var checked = false
+    private var lastAutoCheckAt = 0L
 
+    /**
+     * The automatic check: on start, and again when the app comes back to the foreground after
+     * [AUTO_CHECK_INTERVAL_MS]. The old once-per-process latch meant a phone that keeps the app in
+     * memory for days never asked again, which is why a release published after the last cold
+     * start was never offered.
+     */
     suspend fun checkOnce(currentVersion: String) {
-        if (checked) return
-        checked = true
+        val now = System.currentTimeMillis()
+        if (now - lastAutoCheckAt < AUTO_CHECK_INTERVAL_MS) return
+        lastAutoCheckAt = now
         val settings = runCatching { hostsStore.settingsOnce() }.getOrNull() ?: return
         if (!settings.updateCheckEnabled) return
+        check(currentVersion, ignoreDismissed = false)
+    }
 
-        val release = fetchLatest() ?: return
+    /**
+     * The manual check from Settings. Ignores the automatic-check switch (the user just asked) and
+     * the dismissed version (asking again is withdrawing the dismissal), and reports every outcome
+     * — including "up to date" and "could not reach GitHub" — because a button that says nothing
+     * when there is nothing to offer looks broken.
+     */
+    suspend fun checkNow(currentVersion: String): CheckOutcome = check(currentVersion, ignoreDismissed = true)
+
+    private suspend fun check(currentVersion: String, ignoreDismissed: Boolean): CheckOutcome {
+        val release = fetchLatest() ?: return CheckOutcome.Unreachable
         val version = release.tagName.trim().removePrefix("v")
-        if (version.isEmpty() || !isNewerVersion(version, currentVersion)) return
-        if (settings.dismissedUpdate == version) return
-        _available.value = AvailableUpdate(version, release.htmlUrl.ifBlank { RELEASES_URL })
+        if (version.isEmpty() || !isNewerVersion(version, currentVersion)) {
+            _available.value = null
+            return CheckOutcome.UpToDate(version.ifEmpty { currentVersion })
+        }
+        if (!ignoreDismissed) {
+            val dismissed = runCatching { hostsStore.settingsOnce().dismissedUpdate }.getOrNull()
+            if (dismissed == version) return CheckOutcome.Dismissed(version)
+        }
+        val update = AvailableUpdate(version, release.htmlUrl.ifBlank { RELEASES_URL })
+        _available.value = update
+        return CheckOutcome.Available(update)
     }
 
     /** Stop offering [version]; a later release will still be offered. */
@@ -111,7 +137,17 @@ class UpdateChecker @Inject constructor(
         }.getOrNull()
     }
 
+    /** What a check found. */
+    sealed interface CheckOutcome {
+        data class Available(val update: AvailableUpdate) : CheckOutcome
+        data class UpToDate(val latest: String) : CheckOutcome
+        data class Dismissed(val version: String) : CheckOutcome
+        data object Unreachable : CheckOutcome
+    }
+
     private companion object {
+        /** Six hours: often enough to notice a release the same day, rare enough to be free. */
+        const val AUTO_CHECK_INTERVAL_MS = 6L * 60 * 60 * 1000
         const val REPO = "sorsama/deepseek-harness-mobile"
         const val LATEST_RELEASE_API = "https://api.github.com/repos/$REPO/releases/latest"
         const val RELEASES_URL = "https://github.com/$REPO/releases/latest"

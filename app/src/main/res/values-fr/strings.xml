@@ -566,4 +566,7 @@
     <string name="panel_empty_folder">Ce dossier est vide</string>
     <string name="panel_preview_hint">Touchez un fichier dans Fichiers pour l\'ouvrir ici</string>
     <string name="panel_open_host_failed">Le harness n\'a pas pu ouvrir ce fichier sur son ordinateur ; il n\'y a peut-être pas de session de bureau.</string>
+    <string name="settings_update_check_now">Vérifier maintenant</string>
+    <string name="settings_update_up_to_date">Vous avez la dernière version.</string>
+    <string name="settings_update_unreachable">Impossible de joindre GitHub.</string>
 </resources>

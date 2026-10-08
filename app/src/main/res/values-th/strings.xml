@@ -566,4 +566,7 @@
     <string name="panel_empty_folder">โฟลเดอร์นี้ว่างเปล่า</string>
     <string name="panel_preview_hint">แตะไฟล์ในแท็บไฟล์เพื่อเปิดที่นี่</string>
     <string name="panel_open_host_failed">harness ไม่สามารถเปิดไฟล์นี้บนคอมพิวเตอร์ของมันได้ — อาจไม่มีเซสชันเดสก์ท็อปที่นั่น</string>
+    <string name="settings_update_check_now">ตรวจสอบตอนนี้</string>
+    <string name="settings_update_up_to_date">คุณมีเวอร์ชันล่าสุดแล้ว</string>
+    <string name="settings_update_unreachable">ไม่สามารถเชื่อมต่อ GitHub ได้</string>
 </resources>

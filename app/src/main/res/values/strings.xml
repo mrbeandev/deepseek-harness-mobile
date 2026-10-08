@@ -382,7 +382,7 @@
     <string name="update_open">View release</string>
     <string name="update_later">Later</string>
     <string name="settings_update_check">Check for updates</string>
-    <string name="settings_update_check_hint">Asks GitHub for the latest release when the app starts.</string>
+    <string name="settings_update_check_hint">Asks GitHub for the latest release when the app starts and every few hours while it is open.</string>
     <!-- Relay: choosing how to connect, pairing, and the failures that need a different fix. -->
     <string name="connect_mode_title">How to connect</string>
     <string name="connect_mode_lan">Local network</string>
@@ -568,4 +568,7 @@
     <string name="panel_empty_folder">This folder is empty</string>
     <string name="panel_preview_hint">Tap a file in Files to open it here</string>
     <string name="panel_open_host_failed">The harness could not open this file on its computer — there may be no desktop session there.</string>
+    <string name="settings_update_check_now">Check now</string>
+    <string name="settings_update_up_to_date">You have the latest version.</string>
+    <string name="settings_update_unreachable">Could not reach GitHub.</string>
 </resources>

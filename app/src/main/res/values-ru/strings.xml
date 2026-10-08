@@ -566,4 +566,7 @@
     <string name="panel_empty_folder">Эта папка пуста</string>
     <string name="panel_preview_hint">Нажмите файл во вкладке Файлы, чтобы открыть его здесь</string>
     <string name="panel_open_host_failed">Harness не смог открыть этот файл на своём компьютере — возможно, там нет сеанса рабочего стола.</string>
+    <string name="settings_update_check_now">Проверить сейчас</string>
+    <string name="settings_update_up_to_date">У вас последняя версия.</string>
+    <string name="settings_update_unreachable">Не удалось подключиться к GitHub.</string>
 </resources>

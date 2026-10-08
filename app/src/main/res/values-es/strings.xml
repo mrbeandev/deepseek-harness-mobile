@@ -566,4 +566,7 @@
     <string name="panel_empty_folder">Esta carpeta está vacía</string>
     <string name="panel_preview_hint">Toca un archivo en Archivos para abrirlo aquí</string>
     <string name="panel_open_host_failed">El harness no pudo abrir este archivo en su equipo; puede que no haya una sesión de escritorio allí.</string>
+    <string name="settings_update_check_now">Comprobar ahora</string>
+    <string name="settings_update_up_to_date">Tienes la última versión.</string>
+    <string name="settings_update_unreachable">No se pudo conectar con GitHub.</string>
 </resources>

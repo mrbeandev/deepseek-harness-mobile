@@ -113,7 +113,9 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
             finally { state.busy = false }
         }
     }
-    LaunchedEffect(key) { if (state.listing == null) listDirectory(state.directory) }
+    // Keyed on the directory too: `browse()` clears the listing and sets a new directory, and
+    // that must fetch even though the key is unchanged.
+    LaunchedEffect(key, state.directory) { if (state.listing == null) listDirectory(state.directory) }
     // Invalidate previews when the host reports a file observation. OS-only changes are checked
     // by stat each time a tab opens and by the explicit Refresh action.
     //
