@@ -3,6 +3,37 @@
 All notable changes to DSH Mobile are documented here. Format based on
 [Keep a Changelog](https://keepachangelog.com/); the project uses SemVer.
 
+## [0.14.0] - 2026-10-08
+
+Adds a `/` menu to the composer and a picker for the dsh-rewind plugin's `/rewind`. Both come from
+@mrbeandev (#50).
+
+### Added
+
+- **A `/` menu above the composer.** Type `/` at the start of a draft to list the session's
+  commands and skills, filtered by name as you type. Tapping a command that takes no arguments
+  runs it. Tapping one that does, or a skill, fills in its name and leaves the cursor after it.
+- **A rewind picker for the dsh-rewind plugin.** When the host has
+  [dsh-rewind-plugin](https://www.npmjs.com/package/dsh-rewind-plugin), `/rewind` and `/undo`
+  open a list of the session's messages instead of running straight away. Pick a message, then
+  rewind the conversation only, or the conversation and the code. Conversation and code shows the
+  files it will restore or delete and asks you to confirm first. After a rewind, the withdrawn
+  message goes back into the composer if the composer is empty, so you can edit and resend it.
+  The app never sends a bare `/rewind`, which the plugin answers by rewinding to the latest
+  message without asking.
+- **Rewinds in the transcript.** Messages a rewind withdrew are hidden, as the web client hides
+  them, and a "Rewound to here" divider marks each cut. If a cut covers the whole loaded page,
+  the transcript pages back a limited number of times until something above the cut shows up.
+
+### Internal
+
+- Plugin pickers that the web client builds with `commandUi.decorate()` can now be ported
+  natively. The app has a registry of decorations, one shared popup-select sheet (loading,
+  search, retry, chained steps) and a check that the session's command catalog comes from the
+  plugin being ported.
+- Tests cover the rewind cut rule, the picker's command sequence and composer refill against the
+  plugin's own text formats, the `/` menu's matching, and the picker sheet on a device.
+
 ## [0.13.0] - 2026-10-08
 
 Moves the protocol baseline to DeepSeek Harness 0.2.1-alpha.1 and adds its management screens and timed questions.
