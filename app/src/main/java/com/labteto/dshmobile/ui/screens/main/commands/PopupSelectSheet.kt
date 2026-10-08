@@ -42,8 +42,25 @@ import kotlinx.coroutines.launch
 @Composable
 internal fun UiText.resolve(): String = when (this) {
     is UiText.Literal -> text
-    is UiText.Res -> if (args.isEmpty()) stringResource(id) else stringResource(id, *args.toTypedArray())
+    is UiText.Res -> if (args.isEmpty()) {
+        stringResource(id)
+    } else {
+        stringResource(id, *args.map { if (it is UiText) it.resolve() else it }.toTypedArray())
+    }
+    is UiText.Lines -> buildString {
+        lines.forEachIndexed { index, line ->
+            if (index > 0) append('\n')
+            append(line.resolve())
+        }
+    }
 }
+
+/** What a failed load or pick shows: the decoration's own wording, or the exception's message. */
+private fun Exception.uiText(): UiText = (this as? CommandUiException)?.text ?: (message ?: toString()).ui()
+
+/** The local search matches what a row says, as upstream's `filterOptions` does: label and detail. */
+private fun SelectOption.matches(query: String): Boolean =
+    listOfNotNull(label, detail).any { (it as? UiText.Literal)?.text?.lowercase()?.contains(query) == true }
 
 /**
  * The shared popup-select shell: the phone's version of ui-commands' `PopupSelectController`
@@ -52,8 +69,8 @@ internal fun UiText.resolve(): String = when (this) {
  * One sheet serves every decoration. It loads the first step's rows through the spec, filters
  * them against a local search, and on a pick either closes (the step returned nothing) or shows
  * the next step. A step may carry its own loader, which replaces it when the data lands — that is
- * how rewind's mode step first shows "checking…" and then the impact list. Failures are shown in
- * place with a retry, never as a toast the user has to chase.
+ * how rewind's mode step first shows "checking…" and then offers the file restore. Failures are
+ * shown in place with a retry, never as a toast the user has to chase.
  */
 @Composable
 internal fun PopupSelectSheet(
@@ -68,8 +85,9 @@ internal fun PopupSelectSheet(
     var note by remember { mutableStateOf<UiText?>(null) }
     var loading by remember { mutableStateOf(true) }
     var submitting by remember { mutableStateOf(false) }
-    var error by remember { mutableStateOf<String?>(null) }
+    var error by remember { mutableStateOf<UiText?>(null) }
     var search by remember { mutableStateOf("") }
+    // Bumped by Retry, which restarts whichever load the open step owns.
     var revision by remember { mutableIntStateOf(0) }
 
     // First step: the spec's own options.
@@ -81,38 +99,42 @@ internal fun PopupSelectSheet(
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: e.toString()
+            error = e.uiText()
         } finally {
             loading = false
         }
     }
     // Later steps: rows are immediate; a loader, when present, swaps the step once it settles.
-    LaunchedEffect(step) {
+    LaunchedEffect(step, revision) {
         val current = step ?: return@LaunchedEffect
         options = current.options; note = current.note; search = ""
         val load = current.load ?: return@LaunchedEffect
-        loading = true
+        loading = true; error = null
         try {
             val next = load()
             if (step === current) { step = next.copy(load = null) }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: e.toString()
+            error = e.uiText()
         } finally {
             loading = false
         }
     }
 
+    // Single flight, as upstream's controller: the caller sets [submitting] before launching, so a
+    // second tap landing before this coroutine starts cannot run a pick — a rewind — twice.
     suspend fun pick(option: SelectOption) {
-        submitting = true; error = null
+        error = null
         try {
-            val next = step?.onSelect?.invoke(option) ?: spec.onSelect(option, context)
+            // A step that answers null is done. It must not fall back to the first step's handler.
+            val current = step
+            val next = if (current != null) current.onSelect(option) else spec.onSelect(option, context)
             if (next == null) onDismiss() else step = next
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            error = e.message ?: e.toString()
+            error = e.uiText()
         } finally {
             submitting = false
         }
@@ -121,7 +143,7 @@ internal fun PopupSelectSheet(
     val title = step?.title?.resolve() ?: "/$command"
     val visible = remember(options, search) {
         val q = search.trim().lowercase()
-        if (q.isEmpty()) options else options.filter { o -> o.id.contains(q) || (o.label as? UiText.Literal)?.text?.lowercase()?.contains(q) == true }
+        if (q.isEmpty()) options else options.filter { it.matches(q) }
     }
     val scope = rememberCoroutineScope()
 
@@ -139,22 +161,41 @@ internal fun PopupSelectSheet(
             note?.let { Text(it.resolve(), style = DsType.small13, color = colors.labelSecondary) }
             error?.let { message ->
                 DsCard {
-                    Text(message, style = DsType.small13, color = colors.error)
+                    Text(message.resolve(), style = DsType.small13, color = colors.error)
                     DsButton(
                         stringResource(R.string.common_retry),
-                        { if (step == null) revision++ else step = step?.let { it.copy() } },
+                        {
+                            error = null
+                            revision++
+                        },
                         variant = DsButtonVariant.Outline,
                     )
                 }
             }
             if (!loading && error == null && visible.isEmpty()) {
-                Text(stringResource(R.string.ux_b_no_matches), style = DsType.std14, color = colors.labelTertiary)
+                val empty = spec.empty.takeIf { step == null && search.isBlank() }
+                Text(
+                    empty?.resolve() ?: stringResource(R.string.command_popup_no_matches),
+                    style = DsType.std14,
+                    color = colors.labelTertiary,
+                )
             }
             visible.forEach { option ->
                 val clickable = option.enabled && !submitting
                 Row(
                     Modifier.fillMaxWidth().heightIn(min = DsSpacing.touchTarget)
-                        .then(if (clickable) Modifier.clickable { scope.launch { pick(option) } } else Modifier)
+                        .then(
+                            if (clickable) {
+                                Modifier.clickable {
+                                    if (!submitting) {
+                                        submitting = true
+                                        scope.launch { pick(option) }
+                                    }
+                                }
+                            } else {
+                                Modifier
+                            },
+                        )
                         .padding(DsSpacing.small),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(DsSpacing.small),

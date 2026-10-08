@@ -143,9 +143,9 @@ internal fun ChatTranscript(
 
     // A rewind hides everything from its target through its marker. A page that lands entirely
     // inside that range adds events and no rows, so a tap on "Load older" looks like it did
-    // nothing. When the newest visible row is the rewind divider and a page just landed without
-    // changing the row count, keep paging (bounded) until something above the cut appears — the
-    // browser has the whole log and never shows this gap.
+    // nothing. When the oldest row loaded — the top of the transcript — is a rewind divider and a
+    // page just landed without changing the row count, keep paging (bounded) until something
+    // above the cut appears.
     val rowCount = rows.size
     val dividerOnTop = rows.lastOrNull().let { it is UserMessageNode && it.isRewindMarker }
     var lastPagedRowCount by remember(sessionId) { mutableIntStateOf(-1) }

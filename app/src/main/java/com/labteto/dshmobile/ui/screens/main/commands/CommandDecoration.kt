@@ -1,6 +1,7 @@
 package com.labteto.dshmobile.ui.screens.main.commands
 
 import com.labteto.dshmobile.core.session.ConversationSnapshot
+import com.labteto.dshmobile.core.wire.dto.CommandDescriptor
 import com.labteto.dshmobile.data.CommandOutcome
 
 /**
@@ -20,6 +21,14 @@ interface CommandDecoration {
     /** The host command names this decorates (without the slash). `rewind` also claims `undo`. */
     val names: Set<String>
 
+    /**
+     * Whether [catalog], the session's `commands/list`, comes from the plugin this decoration
+     * ports. Upstream a decoration is registered by its plugin's own client bundle, so it never
+     * exists without that plugin. A port built into the app has to recognise the plugin from the
+     * catalog instead, or it would take over another plugin's command of the same name.
+     */
+    fun recognizes(catalog: List<CommandDescriptor>): Boolean
+
     /** Whether the bare invocation gets this UI right now; false falls through to the host. */
     fun available(conversation: ConversationSnapshot?): Boolean
 
@@ -30,6 +39,9 @@ interface CommandDecoration {
 /** Everything a decoration needs from the screen to do its work. */
 interface CommandContext {
     val conversation: ConversationSnapshot?
+
+    /** The composer's current text. */
+    val draft: String
 
     /** Run one complete command line against the open session and wait for its result. */
     suspend fun run(line: String): CommandOutcome
@@ -46,6 +58,8 @@ sealed interface CommandUiSpec {
     data class PopupSelect(
         val options: suspend (CommandContext) -> List<SelectOption>,
         val onSelect: suspend (SelectOption, CommandContext) -> SelectStep?,
+        /** Shown in place of the rows when [options] lists none. */
+        val empty: UiText? = null,
     ) : CommandUiSpec
 
     /** A bare invocation runs one callback and submits nothing. */
@@ -55,11 +69,18 @@ sealed interface CommandUiSpec {
 /**
  * Text a decoration hands to the shell: either literal (host-provided, e.g. a message preview) or
  * a string resource the shell resolves, so a decoration stays a plain object with no Context.
+ * A [Res] argument may itself be a [UiText].
  */
 sealed interface UiText {
     data class Literal(val text: String) : UiText
     data class Res(@androidx.annotation.StringRes val id: Int, val args: List<Any> = emptyList()) : UiText
+
+    /** Several texts, one per line. */
+    data class Lines(val lines: List<UiText>) : UiText
 }
+
+/** A failure a decoration words itself; the shell shows [text] where it would show the message. */
+class CommandUiException(val text: UiText) : Exception()
 
 fun String.ui(): UiText = UiText.Literal(this)
 fun res(@androidx.annotation.StringRes id: Int, vararg args: Any): UiText = UiText.Res(id, args.toList())

@@ -552,4 +552,9 @@
     <string name="rewind_checking">Проверка изменений файлов…</string>
     <string name="rewind_no_changes">После этого сообщения нет отслеживаемых изменений файлов; откат только разговора</string>
     <string name="rewind_impact_failed">Не удалось получить список изменений: %1$s</string>
+    <string name="rewind_no_candidates">В этом сеансе пока нет сообщений, к которым можно откатиться.</string>
+    <string name="rewind_impact_restore">Восстановить %1$s</string>
+    <string name="rewind_impact_delete">Удалить %1$s</string>
+    <string name="rewind_confirm">Подтвердить откат</string>
+    <string name="command_popup_no_matches">Нет совпадений</string>
 </resources>

@@ -281,28 +281,36 @@ fun ChatScreen(
 
     /** What a decoration gets to work with: the open session's conversation, a command runner, the draft. */
     fun commandContext(sessionId: String, host: String): CommandContext = object : CommandContext {
-        override val conversation get() = conversation
+        override val conversation get() = store.currentConversation.value
+        override val draft get() = composer.text
         override suspend fun run(line: String) = store.runCommand(line, emptyList(), sessionId, host)
-        override fun setDraft(text: String) { draft = text; composer.selection = text.length }
+        override fun setDraft(text: String) { composer.text = text; composer.selection = text.length }
     }
 
     /**
      * The phone's `commandUi.decorate` dispatch: a bare `/name` whose decoration is available
      * opens that decoration's UI and submits nothing — exactly what the web client does before it
      * would otherwise hand the line to `commands/execute`. Anything else returns false and takes
-     * the ordinary path.
+     * the ordinary path, and so does a same-named command from a plugin the decoration is not a
+     * port of.
      */
     fun dispatchDecorated(text: String): Boolean {
         val trimmed = text.trim()
         if (!trimmed.startsWith("/") || trimmed.any { it.isWhitespace() }) return false
         val name = trimmed.drop(1)
         val decoration = CommandDecorations.forName(name) ?: return false
-        if (commands.none { it.name == name } || !decoration.available(conversation)) return false
+        if (commands.none { it.name == name } || !decoration.recognizes(commands)) return false
+        if (!decoration.available(conversation)) return false
         when (val ui = decoration.ui) {
             is CommandUiSpec.PopupSelect -> popup = name to ui
             is CommandUiSpec.Action -> scope.launch {
-                runCatching { ui.run(commandContext(composer.key.sessionId, composer.key.host)) }
-                    .onFailure { toast.second(it.message ?: context.getString(R.string.panel_failed)) }
+                try {
+                    ui.run(commandContext(composer.key.sessionId, composer.key.host))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    toast.second(e.message ?: context.getString(R.string.panel_failed))
+                }
             }
         }
         return true

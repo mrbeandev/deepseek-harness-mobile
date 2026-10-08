@@ -14,14 +14,17 @@ import kotlinx.serialization.json.longOrNull
  * unchanged — so the browser hides them itself. The rule is read off the command ledger rather
  * than off `surfaceOp`, because the ledger is what the plugin's own UI keys on:
  *
- * - a `command/run` named `rewind` (or `undo`) whose `command/done` is a `success` carrying a
- *   `sourceEventSeq` (the marker it appended) cuts `[target, marker]`, where `target` is the
- *   `@seq` in its args;
- * - the `preview` and `__candidates` sub-invocations are housekeeping and hide only themselves;
- * - every rewind command's own run/done rows are hidden too.
+ * - a `command/run` named `rewind` (or `undo`, which the plugin registers with the same handler)
+ *   whose `command/done` is a `success` carrying a `sourceEventSeq` (the marker it appended) cuts
+ *   `[target, marker]`, where `target` is the `@seq` in its args, and hides its own run and done
+ *   rows;
+ * - the `preview` and `__candidates` sub-invocations are housekeeping and hide only their own rows;
+ * - any other rewind stays visible, as it does in the browser: a failure, or a target given
+ *   without a mode, whose result is the usage text that says what to type next.
  *
- * A bare `/rewind` with no `@seq` has no target and so cuts nothing — which is also what the
- * harness does with it, whatever its result text says.
+ * A bare `/rewind`, or one naming its target by index, does cut the model's context — the host
+ * rewinds to its latest message, or to the nth — but its args carry no `@seq`, so the ledger
+ * cannot say what it withdrew. As in the browser, its rows hide and nothing else does.
  */
 object RewindCuts {
     private val commandNames = setOf("rewind", "undo")
@@ -41,26 +44,28 @@ object RewindCuts {
             if (data.str("name") !in commandNames) continue
             val args = data.str("args").orEmpty()
             val done = dones[data.str("commandId")]
-            if (done != null) hidden.add(done.seq)
             if (args.contains("preview") || args.contains("__candidates")) {
                 hidden.add(run.seq)
+                done?.let { hidden.add(it.seq) }
                 continue
             }
             val outcome = done?.data as? JsonObject ?: continue
             if (outcome.str("kind") != "success") continue
             val marker = (outcome["sourceEventSeq"] as? JsonPrimitive)?.longOrNull ?: continue
             hidden.add(run.seq)
+            hidden.add(done.seq)
             val target = targetSeqOf(args) ?: continue
             spans.add(Cut(target, marker))
         }
         val cuts = coalesce(spans)
-        // Markers: a bare rewind (no target) appended one that cuts nothing, and an older cut's
-        // marker sits inside a newer cut's range. Only the marker ending the newest effective cut
-        // is the divider the transcript draws; every other marker is an empty row and hides.
-        val divider = cuts.maxOfOrNull { it.end }
+        // Markers: each effective cut ends at the marker of the latest rewind in it, and that
+        // marker is the divider the transcript draws. One inside a cut (an earlier rewind a later
+        // one reached past) or one that ends no cut (a bare or index-form rewind) is an empty row
+        // and hides.
+        val dividers = cuts.mapTo(HashSet()) { it.end }
         for (node in nodes) {
             if (node is UserMessageNode && node.sourceKind == REWIND_SOURCE_KIND) {
-                if (node.seq != divider) hidden.add(node.seq)
+                if (node.seq !in dividers) hidden.add(node.seq)
                 continue
             }
             if (cuts.any { node.seq in it.start..it.end }) hidden.add(node.seq)

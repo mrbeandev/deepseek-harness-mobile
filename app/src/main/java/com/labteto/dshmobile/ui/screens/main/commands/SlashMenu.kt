@@ -64,8 +64,9 @@ internal sealed interface SlashRow {
 
 /**
  * Commands first, then skills; name-prefix matches before name-substring matches. The web's `/`
- * source matches the typed token against names only — a description is explanation, not an alias,
- * and matching it made `rew` offer `/hypercompact` because its blurb says "request".
+ * source matches the typed token against names (and its built-in rows' localized titles), never
+ * descriptions — a description is explanation, not an alias, and matching it made `rew` offer
+ * `/hypercompact` because its blurb says "request".
  */
 internal fun slashRows(query: String, commands: List<CommandDescriptor>, skills: List<SkillEntry>): List<SlashRow> {
     val q = query.lowercase()

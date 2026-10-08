@@ -554,4 +554,9 @@
     <string name="rewind_checking">Checking for file changes…</string>
     <string name="rewind_no_changes">No tracked file changes after this message; conversation-only rewind</string>
     <string name="rewind_impact_failed">Could not fetch the impact list: %1$s</string>
+    <string name="rewind_no_candidates">This session has no messages to rewind to yet.</string>
+    <string name="rewind_impact_restore">Restore %1$s</string>
+    <string name="rewind_impact_delete">Delete %1$s</string>
+    <string name="rewind_confirm">Confirm rewind</string>
+    <string name="command_popup_no_matches">No matches</string>
 </resources>

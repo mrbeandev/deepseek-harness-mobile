@@ -552,4 +552,9 @@
     <string name="rewind_checking">正在检查文件变更…</string>
     <string name="rewind_no_changes">此消息之后没有可还原的文件变更，仅可回退对话</string>
     <string name="rewind_impact_failed">无法获取影响清单：%1$s</string>
+    <string name="rewind_no_candidates">当前会话还没有可回退的消息。</string>
+    <string name="rewind_impact_restore">还原 %1$s</string>
+    <string name="rewind_impact_delete">删除 %1$s</string>
+    <string name="rewind_confirm">确认回退</string>
+    <string name="command_popup_no_matches">没有匹配项</string>
 </resources>

@@ -552,4 +552,9 @@
     <string name="rewind_checking">Vérification des modifications de fichiers…</string>
     <string name="rewind_no_changes">Aucune modification de fichier suivie après ce message ; rembobinage de la conversation seulement</string>
     <string name="rewind_impact_failed">Impossible de récupérer la liste d\'impact : %1$s</string>
+    <string name="rewind_no_candidates">Cette session n\'a encore aucun message vers lequel rembobiner.</string>
+    <string name="rewind_impact_restore">Restaurer %1$s</string>
+    <string name="rewind_impact_delete">Supprimer %1$s</string>
+    <string name="rewind_confirm">Confirmer le rembobinage</string>
+    <string name="command_popup_no_matches">Aucun résultat</string>
 </resources>

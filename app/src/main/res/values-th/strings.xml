@@ -552,4 +552,9 @@
     <string name="rewind_checking">กำลังตรวจสอบการเปลี่ยนแปลงไฟล์…</string>
     <string name="rewind_no_changes">ไม่มีการเปลี่ยนแปลงไฟล์ที่ติดตามหลังข้อความนี้ ย้อนกลับเฉพาะบทสนทนา</string>
     <string name="rewind_impact_failed">ไม่สามารถดึงรายการผลกระทบได้: %1$s</string>
+    <string name="rewind_no_candidates">เซสชันนี้ยังไม่มีข้อความให้ย้อนกลับ</string>
+    <string name="rewind_impact_restore">กู้คืน %1$s</string>
+    <string name="rewind_impact_delete">ลบ %1$s</string>
+    <string name="rewind_confirm">ยืนยันการย้อนกลับ</string>
+    <string name="command_popup_no_matches">ไม่พบรายการที่ตรงกัน</string>
 </resources>

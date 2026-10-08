@@ -552,4 +552,9 @@
     <string name="rewind_checking">جارٍ التحقق من تغييرات الملفات…</string>
     <string name="rewind_no_changes">لا توجد تغييرات ملفات متتبعة بعد هذه الرسالة؛ إعادة المحادثة فقط</string>
     <string name="rewind_impact_failed">تعذر جلب قائمة التأثير: %1$s</string>
+    <string name="rewind_no_candidates">لا توجد في هذه الجلسة رسائل للإعادة إليها بعد.</string>
+    <string name="rewind_impact_restore">استعادة %1$s</string>
+    <string name="rewind_impact_delete">حذف %1$s</string>
+    <string name="rewind_confirm">تأكيد الإعادة</string>
+    <string name="command_popup_no_matches">لا توجد نتائج مطابقة</string>
 </resources>

@@ -552,4 +552,9 @@
     <string name="rewind_checking">ফাইল পরিবর্তন পরীক্ষা করা হচ্ছে…</string>
     <string name="rewind_no_changes">এই বার্তার পরে ট্র্যাক করা কোনো ফাইল পরিবর্তন নেই; শুধু কথোপকথন রিওয়াইন্ড</string>
     <string name="rewind_impact_failed">প্রভাব তালিকা আনা যায়নি: %1$s</string>
+    <string name="rewind_no_candidates">এই সেশনে এখনও রিওয়াইন্ড করার মতো কোনো বার্তা নেই।</string>
+    <string name="rewind_impact_restore">%1$s পুনরুদ্ধার করুন</string>
+    <string name="rewind_impact_delete">%1$s মুছুন</string>
+    <string name="rewind_confirm">রিওয়াইন্ড নিশ্চিত করুন</string>
+    <string name="command_popup_no_matches">কোনো মিল নেই</string>
 </resources>

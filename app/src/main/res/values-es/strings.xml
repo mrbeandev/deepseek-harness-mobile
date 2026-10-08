@@ -552,4 +552,9 @@
     <string name="rewind_checking">Comprobando cambios en archivos…</string>
     <string name="rewind_no_changes">No hay cambios de archivos rastreados tras este mensaje; solo se rebobina la conversación</string>
     <string name="rewind_impact_failed">No se pudo obtener la lista de impacto: %1$s</string>
+    <string name="rewind_no_candidates">Esta sesión aún no tiene mensajes a los que rebobinar.</string>
+    <string name="rewind_impact_restore">Restaurar %1$s</string>
+    <string name="rewind_impact_delete">Eliminar %1$s</string>
+    <string name="rewind_confirm">Confirmar rebobinado</string>
+    <string name="command_popup_no_matches">Sin coincidencias</string>
 </resources>
