@@ -39,6 +39,26 @@ internal fun <T> RpcResult<T>.requireValue(): T = when (this) {
 
 @Composable
 internal fun WorkspacePanels(store: SessionStore, state: PanelState, onDismiss: () -> Unit) {
+    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Surface(Modifier.fillMaxSize(), color = DsTheme.colors.bgBase) {
+            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_back)) }
+                    Text(stringResource(R.string.panel_workspace), modifier = Modifier.padding(16.dp))
+                }
+                WorkspacePanelBody(store, state, Modifier.fillMaxSize())
+            }
+        }
+    }
+}
+
+/**
+ * The workspace browser itself — Files / Preview / Terminal — without any surrounding chrome, so
+ * it can live inline as the chat's Workspace tab or inside [WorkspacePanels] when a file mention
+ * opens it over the chat.
+ */
+@Composable
+internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier: Modifier = Modifier) {
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val key = state.key
@@ -103,13 +123,7 @@ internal fun WorkspacePanels(store: SessionStore, state: PanelState, onDismiss: 
     CompositionLocalProvider(com.labteto.dshmobile.ui.components.LocalFileOpener provides { path: String ->
         state.open(activeDocument?.let { com.labteto.dshmobile.core.session.resolvePreviewReference(it, path) } ?: path)
     }) {
-    Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(Modifier.fillMaxSize(), color = DsTheme.colors.bgBase) {
-            Column(Modifier.fillMaxSize().safeDrawingPadding()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    TextButton(onClick = onDismiss) { Text(stringResource(R.string.common_back)) }
-                    Text(stringResource(R.string.panel_workspace), modifier = Modifier.padding(16.dp))
-                }
+            Column(modifier) {
                 TabRow(selectedTabIndex = state.section) {
                     listOf(R.string.panel_files, R.string.panel_preview, R.string.panel_terminal).forEachIndexed { i, title ->
                         Tab(selected = state.section == i, onClick = { state.section = i }, text = { Text(stringResource(title)) })
@@ -159,8 +173,6 @@ internal fun WorkspacePanels(store: SessionStore, state: PanelState, onDismiss: 
                     2 -> TerminalPanel(store, state, Modifier.weight(1f))
                 }
             }
-        }
-    }
     }
 }
 

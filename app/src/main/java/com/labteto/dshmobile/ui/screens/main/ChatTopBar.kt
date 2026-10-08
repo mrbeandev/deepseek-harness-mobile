@@ -48,10 +48,10 @@ import com.labteto.dshmobile.ui.theme.DsTheme
 import com.labteto.dshmobile.ui.theme.DsType
 
 /** The two views of a session the harness offers. */
-internal enum class ChatTab { Chat, Trajectory }
+internal enum class ChatTab { Chat, Trajectory, Workspace }
 
 /**
- * The session chrome: a two-row bar plus the Chat / Trajectory tabs.
+ * The session chrome: a two-row bar plus the Chat / Trajectory / Workspace tabs.
  *
  * Row one carries the controls that belong to the *connection* — the drawer, the model, the live
  * status. Row two carries the ones that belong to the *session* — its title, its agent preset, its
@@ -268,10 +268,21 @@ private fun ChatTabRow(tab: ChatTab, onTabChange: (ChatTab) -> Unit) {
             segments = listOf(
                 DsSegment(TAB_CHAT, stringResource(R.string.chat_tab)),
                 DsSegment(TAB_TRAJECTORY, stringResource(R.string.trajectory_title)),
+                DsSegment(TAB_WORKSPACE, stringResource(R.string.panel_workspace)),
             ),
-            selectedKey = if (tab == ChatTab.Chat) TAB_CHAT else TAB_TRAJECTORY,
+            selectedKey = when (tab) {
+                ChatTab.Chat -> TAB_CHAT
+                ChatTab.Trajectory -> TAB_TRAJECTORY
+                ChatTab.Workspace -> TAB_WORKSPACE
+            },
             onSelect = { key ->
-                onTabChange(if (key == TAB_CHAT) ChatTab.Chat else ChatTab.Trajectory)
+                onTabChange(
+                    when (key) {
+                        TAB_CHAT -> ChatTab.Chat
+                        TAB_TRAJECTORY -> ChatTab.Trajectory
+                        else -> ChatTab.Workspace
+                    },
+                )
             },
             role = Role.Tab,
         )
@@ -286,3 +297,4 @@ private fun ChatTabRow(tab: ChatTab, onTabChange: (ChatTab) -> Unit) {
 
 private const val TAB_CHAT = "chat"
 private const val TAB_TRAJECTORY = "trajectory"
+private const val TAB_WORKSPACE = "workspace"

@@ -12,6 +12,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -442,9 +443,6 @@ fun ChatScreen(
             connectionError?.let {
                 androidx.compose.material3.TextButton(onClick = { store.retryConnection() }) { ConnectionBanner(it) }
             }
-            androidx.compose.material3.TextButton(onClick = { panelKey = composer.key }, enabled = currentSessionId != null) {
-                androidx.compose.material3.Text(stringResource(R.string.panel_workspace))
-            }
             if (conversation?.gap == true) {
                 ConnectionBanner(stringResource(R.string.common_reconnecting))
             }
@@ -500,9 +498,21 @@ fun ChatScreen(
                             cwd = currentSession?.cwd,
                             listState = trajectoryListState,
                         )
+                        // The workspace browser as a tab rather than a button-launched dialog, so it
+                        // sits beside the transcript it refers to. A file mention tapped in the chat
+                        // still opens the dialog form over the chat (see `panelKey`).
+                        ChatTab.Workspace -> if (currentSessionId != null) {
+                            WorkspacePanelBody(store, store.panels.get(composer.key), Modifier.fillMaxSize())
+                        } else {
+                            Box(Modifier.fillMaxSize())
+                        }
                     }
                 }
 
+                // The Workspace tab is a file browser and a terminal, not a conversation: the
+                // composer, docks and stats footer would only take height from it. They come
+                // back the moment the reader returns to Chat or Trajectory.
+                if (tab != ChatTab.Workspace) {
                 conversation?.let { conv ->
                     Column(
                         modifier = Modifier
@@ -663,6 +673,7 @@ fun ChatScreen(
                 )
 
                 StatsFooter(stats = sessionStats, usage = tokenUsage)
+                }
                 }
             }
         }
