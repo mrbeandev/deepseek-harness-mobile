@@ -77,9 +77,11 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 - Workspace panels — tabbed text, Markdown, image, PDF and isolated HTML previews; native
   terminal controls with a bundled xterm renderer; archived-session restore in Settings.
 - Message feedback — confirmed ratings and retraction, with version-conflict handling.
-- Slash commands and skills — the composer checks a `/` line against the session's own command
-  catalog and runs it through the harness's command gateway. Anything the catalog does not claim
-  is sent as a prompt, which is how skills get invoked.
+- Slash commands and skills — typing `/` lists the session's commands and skills above the
+  composer. The composer checks a `/` line against the session's own command catalog and runs it
+  through the harness's command gateway. Anything the catalog does not claim is sent as a prompt,
+  which is how skills get invoked. With the dsh-rewind plugin on the host, `/rewind` opens a
+  picker.
 - Everything the GUI does — goals (phases, rounds, pause/resume/edit), plan mode and plan review,
   permission approvals, user questions, todo dock, subagents (catalog, follow-ups, interrupt),
   background jobs, workflow runs, skills, model selection, agent presets, session search,
@@ -90,6 +92,12 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
   shimmer, ink buttons), with light, dark and system themes.
 - 11 languages — English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский,
   اردو, ไทย (RTL aware).
+
+### Added in 0.14.0
+
+- A `/` menu above the composer with the session's commands and skills.
+- A picker for the dsh-rewind plugin's `/rewind` and `/undo` that asks for confirmation before
+  it restores files. The transcript hides what a rewind withdrew and marks the cut.
 
 ### Added in 0.13.0
 
@@ -105,10 +113,10 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 
 - Android 8.0+ (minSdk 26).
 - A running [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-  at `0.2.1-alpha.1` for the DSH Mobile `0.13.0` baseline. Existing protocol fallbacks remain
-  for `0.2.0-rc.1`, `0.1.7-rc.x` and `0.1.6-alpha.x`; new management features need host support.
-  See [compatibility](docs/COMPATIBILITY.md) and the [0.13.0 validation status](docs/VALIDATION-0.13.0.md)
-  for what has been checked on this revision.
+  at `0.2.1-alpha.1`, the protocol baseline for DSH Mobile `0.14.0` (unchanged since `0.13.0`).
+  Existing protocol fallbacks remain for `0.2.0-rc.1`, `0.1.7-rc.x` and `0.1.6-alpha.x`; new
+  management features need host support. See [compatibility](docs/COMPATIBILITY.md) and the
+  [0.13.0 validation status](docs/VALIDATION-0.13.0.md) for what has been checked on this baseline.
 
 ## Quick start
 

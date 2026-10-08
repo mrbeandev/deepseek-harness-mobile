@@ -6,6 +6,7 @@ DSH Mobile speaks the DeepSeek Harness web-client protocol over `/api`. The prot
 
 | DSH Mobile | Harness | Notes |
 |---|---|---|
+| 0.14.0 | 0.2.1-alpha.1 | Same protocol baseline as 0.13.0; the rewind picker needs dsh-rewind-plugin on the host |
 | 0.13.0 | 0.2.1-alpha.1 | Protocol baseline; real-host conformance and pre-UX Android E2E passed, including an older-host check on 0.2.0-rc.1; see [validation](VALIDATION-0.13.0.md) for final UX verification status |
 | 0.12.2 | 0.2.0-rc.1 | Nothing this client uses changed since 0.1.7-rc.2; 0.1.7-rc.x and 0.1.6-alpha.x hosts still work |
 | 0.12.1 | 0.2.0-rc.1 | The agent preset chip never shows |
@@ -31,6 +32,14 @@ returned 404 for `schedule/catalog`, so Automation was hidden from the drawer an
 Details while sessions, chat and questions worked. Retaining the other fallbacks
 does not establish a fresh test result for every older host; see
 [0.13.0 validation](VALIDATION-0.13.0.md).
+
+0.14.0 sends nothing new to the harness. Its rewind picker runs the dsh-rewind plugin's own
+`/rewind` subcommands and reads their text output, so it depends on that plugin rather than on
+the harness. It turns on only when the session's command catalog lists `rewind` next to the
+plugin's `snapshot-auto-cleanup`. The output formats were checked against dsh-rewind-plugin
+0.15.0-beta.1 and 0.15.1. The contributor drove the first version on a device against harness
+0.2.0-rc.1 with 0.15.0-beta.1, and the review fixes were tested on an emulator against a scripted
+host.
 
 - Do not interchange 0.10 and 0.9 on harness 0.1.3 and 0.1.2: live replies and command arguments changed. Upgrade both app and harness, or neither.
 - 0.9.0 cannot speak the 0.1.1 protocol; the handshake fails.
