@@ -77,10 +77,12 @@ et une [FAQ](https://github.com/sorsama/deepseek-harness-mobile/wiki/FAQ).
 - **Expérience de discussion complète** — tours diffusés en continu avec raisonnement dépliable,
   markdown, cartes d'outil terminal/diff/lecture/recherche/web, dock de file d'attente (modifier /
   retirer / réorienter), pagination de l'historique, pièces jointes images et fichiers.
-- **Commandes slash et compétences** — la zone de saisie confronte une ligne commençant par `/` au
-  catalogue de commandes propre à la session et l'exécute via la passerelle de commandes du
+- **Commandes slash et compétences** — taper `/` affiche au-dessus de la zone de saisie les
+  commandes et compétences de la session. La zone de saisie confronte une ligne commençant par `/`
+  au catalogue de commandes propre à la session et l'exécute via la passerelle de commandes du
   harness ; ce que le catalogue ne revendique pas part comme un prompt, et c'est ainsi que les
-  compétences sont invoquées.
+  compétences sont invoquées. Avec le plugin dsh-rewind sur le harness, `/rewind` ouvre un
+  sélecteur.
 - **Tout ce que fait l'interface web** — objectifs (phases, tours, pause/reprise/édition), mode
   plan et revue de plan, approbations de permissions, questions à l'utilisateur, dock de tâches,
   sous-agents (catalogue, relances, interruption), tâches en arrière-plan, exécutions de flux de
@@ -98,7 +100,8 @@ et une [FAQ](https://github.com/sorsama/deepseek-harness-mobile/wiki/FAQ).
 
 - Android 8.0 ou plus (minSdk 26).
 - Un [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) en cours d'exécution
-  en version `0.2.1-alpha.1`, la référence du protocole pour DSH Mobile `0.13.0`.
+  en version `0.2.1-alpha.1`, la référence du protocole pour DSH Mobile `0.14.0` (inchangée
+  depuis `0.13.0`).
   Les adaptations de compatibilité avec `0.2.0-rc.1`, `0.1.7-rc.x` et `0.1.6-alpha.x`
   sont conservées ; les nouvelles fonctions de gestion nécessitent leur prise en charge
   par le harness. Consultez la [compatibilité](docs/COMPATIBILITY.md) et la

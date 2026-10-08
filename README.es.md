@@ -75,10 +75,11 @@ y las [preguntas frecuentes](https://github.com/sorsama/deepseek-harness-mobile/
 - **Experiencia de chat completa** — turnos en streaming con el razonamiento desplegable, markdown,
   tarjetas de herramienta de terminal/diff/lectura/búsqueda/web, panel de cola (editar / quitar /
   redirigir), paginación del historial, imágenes y archivos adjuntos.
-- **Comandos de barra y habilidades** — el compositor coteja una línea que empieza por `/` con el
+- **Comandos de barra y habilidades** — al escribir `/` aparecen sobre el compositor los comandos
+  y las habilidades de la sesión. El compositor coteja una línea que empieza por `/` con el
   catálogo de comandos de la propia sesión y la ejecuta a través de la pasarela de comandos del
   harness; lo que el catálogo no reclama se envía como prompt, que es la forma de invocar las
-  habilidades.
+  habilidades. Con el plugin dsh-rewind en el harness, `/rewind` abre un selector.
 - **Todo lo que hace la GUI** — objetivos (fases, rondas, pausar/reanudar/editar), modo plan y
   revisión del plan, aprobaciones de permisos, preguntas al usuario, panel de tareas pendientes,
   subagentes (catálogo, seguimientos, interrupción), trabajos en segundo plano, ejecuciones de
@@ -96,7 +97,8 @@ y las [preguntas frecuentes](https://github.com/sorsama/deepseek-harness-mobile/
 
 - Android 8.0 o superior (minSdk 26).
 - Un [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) en ejecución
-  en la versión `0.2.1-alpha.1`, la base del protocolo de DSH Mobile `0.13.0`.
+  en la versión `0.2.1-alpha.1`, la base del protocolo de DSH Mobile `0.14.0` (sin cambios
+  desde `0.13.0`).
   Se mantienen las adaptaciones de compatibilidad para `0.2.0-rc.1`, `0.1.7-rc.x` y
   `0.1.6-alpha.x`; las nuevas funciones de gestión necesitan soporte del harness.
   Consulta la [compatibilidad](docs/COMPATIBILITY.md) y la

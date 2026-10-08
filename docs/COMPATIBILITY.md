@@ -59,7 +59,7 @@ host.
 A relay older than 0.2.0 cannot serve harness ≥ 0.1.2: every proxied call returns 401 without the relay's own harness session. The `dsh-relay` 0.2.1 npm package is a [stale build](https://github.com/sorsama/deepseek-harness-relay/pull/6) that also answers 401; install from source with `dsh plugin --profile web add github:sorsama/deepseek-harness-relay#v0.2.1`. The app reports that 401 as the harness refusing the relay.
 
 Pairing `kind` and `v` are checked and refused, rather than degraded; see [protocol notes](PROTOCOL.md).
-0.13.0 retains that relay contract; a live relay run is not yet recorded for this revision.
+0.13.0 and 0.14.0 retain that relay contract; a live relay run is not yet recorded for either.
 
 ## Conformance
 
