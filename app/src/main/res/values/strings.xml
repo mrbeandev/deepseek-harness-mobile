@@ -559,4 +559,5 @@
     <string name="rewind_impact_delete">Delete %1$s</string>
     <string name="rewind_confirm">Confirm rewind</string>
     <string name="command_popup_no_matches">No matches</string>
+    <string name="archived_count">%1$d archived</string>
 </resources>

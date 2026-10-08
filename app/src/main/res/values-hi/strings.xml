@@ -557,4 +557,5 @@
     <string name="rewind_impact_delete">%1$s हटाएं</string>
     <string name="rewind_confirm">रिवाइंड की पुष्टि करें</string>
     <string name="command_popup_no_matches">कोई मेल नहीं</string>
+    <string name="archived_count">%1$d संग्रहीत</string>
 </resources>

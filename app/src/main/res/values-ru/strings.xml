@@ -557,4 +557,5 @@
     <string name="rewind_impact_delete">Удалить %1$s</string>
     <string name="rewind_confirm">Подтвердить откат</string>
     <string name="command_popup_no_matches">Нет совпадений</string>
+    <string name="archived_count">В архиве: %1$d</string>
 </resources>
