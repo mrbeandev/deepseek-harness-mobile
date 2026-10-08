@@ -55,6 +55,13 @@ import com.labteto.dshmobile.ui.components.planReviewOf
 import com.labteto.dshmobile.ui.components.QuestionsPanel
 import com.labteto.dshmobile.ui.components.rememberDsToast
 import com.labteto.dshmobile.ui.rememberSessionStore
+import com.labteto.dshmobile.ui.screens.main.commands.CommandContext
+import com.labteto.dshmobile.ui.screens.main.commands.CommandDecorations
+import com.labteto.dshmobile.ui.screens.main.commands.CommandUiSpec
+import com.labteto.dshmobile.ui.screens.main.commands.PopupSelectSheet
+import com.labteto.dshmobile.ui.screens.main.commands.SlashMenu
+import com.labteto.dshmobile.ui.screens.main.commands.SlashRow
+import com.labteto.dshmobile.ui.screens.main.commands.activeSlash
 import com.labteto.dshmobile.ui.theme.DsAnimations
 import com.labteto.dshmobile.ui.theme.DsTheme
 import androidx.compose.ui.res.stringResource
@@ -129,6 +136,8 @@ fun ChatScreen(
     var panelKey by remember { mutableStateOf<ComposerKey?>(null) }
     var feedback by remember { mutableStateOf<Triple<ComposerKey, String, Boolean>?>(null) }
     var sheet by remember { mutableStateOf<ChatSheet?>(null) }
+    // A decorated command's picker (the phone's `popupSelect`), keyed by the command it serves.
+    var popup by remember(composer.key) { mutableStateOf<Pair<String, CommandUiSpec.PopupSelect>?>(null) }
 
     // Hoisted above the tab swap so each view keeps its own scroll position across switches.
     val chatListState = rememberLazyListState()
@@ -270,8 +279,46 @@ fun ChatScreen(
         startUpload(file, target)
     }
 
+    /** What a decoration gets to work with: the open session's conversation, a command runner, the draft. */
+    fun commandContext(sessionId: String, host: String): CommandContext = object : CommandContext {
+        override val conversation get() = store.currentConversation.value
+        override val draft get() = composer.text
+        override suspend fun run(line: String) = store.runCommand(line, emptyList(), sessionId, host)
+        override fun setDraft(text: String) { composer.text = text; composer.selection = text.length }
+    }
+
+    /**
+     * The phone's `commandUi.decorate` dispatch: a bare `/name` whose decoration is available
+     * opens that decoration's UI and submits nothing — exactly what the web client does before it
+     * would otherwise hand the line to `commands/execute`. Anything else returns false and takes
+     * the ordinary path, and so does a same-named command from a plugin the decoration is not a
+     * port of.
+     */
+    fun dispatchDecorated(text: String): Boolean {
+        val trimmed = text.trim()
+        if (!trimmed.startsWith("/") || trimmed.any { it.isWhitespace() }) return false
+        val name = trimmed.drop(1)
+        val decoration = CommandDecorations.forName(name) ?: return false
+        if (commands.none { it.name == name } || !decoration.recognizes(commands)) return false
+        if (!decoration.available(conversation)) return false
+        when (val ui = decoration.ui) {
+            is CommandUiSpec.PopupSelect -> popup = name to ui
+            is CommandUiSpec.Action -> scope.launch {
+                try {
+                    ui.run(commandContext(composer.key.sessionId, composer.key.host))
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    toast.second(e.message ?: context.getString(R.string.panel_failed))
+                }
+            }
+        }
+        return true
+    }
+
     fun send(text: String) {
         if (composer.preparing || composer.submitting) { draft = text; return }
+        if (attachments.isEmpty() && dispatchDecorated(text)) return
         val delivery = mode
         val targetId = composer.key.sessionId
         val targetHost = composer.key.host
@@ -541,6 +588,31 @@ fun ChatScreen(
                 // consume its controls. The question area scrolls within its allotted height.
                 ModernQuestions(store, currentSessionId, Modifier.weight(1f, fill = false))
 
+                // The `/` autocomplete sits where the web's does: directly above the composer,
+                // only while the draft is a slash token being typed.
+                activeSlash(draft, composer.selection)?.let { slash ->
+                    SlashMenu(
+                        query = slash,
+                        commands = if (commandsAvailable) commands else emptyList(),
+                        skills = skills,
+                        onPick = { row ->
+                            when (row) {
+                                is SlashRow.Command -> if (row.descriptor.input == null) {
+                                    draft = ""
+                                    send(row.descriptor.line)
+                                } else {
+                                    draft = row.descriptor.draftPrefix
+                                    composer.selection = draft.length
+                                }
+                                is SlashRow.Skill -> {
+                                    draft = "/${row.entry.name} "
+                                    composer.selection = draft.length
+                                }
+                            }
+                        },
+                    )
+                }
+
                 Composer(
                     modifier = Modifier.heightIn(max = composerMaxHeight),
                     references = composer.references,
@@ -599,6 +671,14 @@ fun ChatScreen(
 
     }
     referencePicker?.let { ReferencePicker(store, composer, it, onClose = { referencePicker = null }) }
+    popup?.let { (name, spec) ->
+        PopupSelectSheet(
+            command = name,
+            spec = spec,
+            context = commandContext(composer.key.sessionId, composer.key.host),
+            onDismiss = { popup = null },
+        )
+    }
     panelKey?.let { key -> WorkspacePanels(store, store.panels.get(key), onDismiss = { panelKey = null }) }
     feedback?.let { (key, id, positive) -> FeedbackDialog(store, key, id, positive) { feedback = null } }
     when (sheet) {
@@ -623,7 +703,7 @@ fun ChatScreen(
             onRunCommand = { line ->
                 val name = line.removePrefix("/").substringBefore(' ')
                 if (attachments.isEmpty()) {
-                    scope.launch { report(store.runCommand(line)) }
+                    if (!dispatchDecorated(line)) scope.launch { report(store.runCommand(line)) }
                 } else {
                     toast.second(context.getString(R.string.err_command_no_images, name))
                 }

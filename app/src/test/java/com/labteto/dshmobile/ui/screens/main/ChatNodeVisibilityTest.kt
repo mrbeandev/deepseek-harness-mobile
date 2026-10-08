@@ -2,12 +2,14 @@ package com.labteto.dshmobile.ui.screens.main
 
 import com.labteto.dshmobile.core.session.AssistantMessageNode
 import com.labteto.dshmobile.core.session.ChatBlock
+import com.labteto.dshmobile.core.session.CommandNode
 import com.labteto.dshmobile.core.session.OtherNode
 import com.labteto.dshmobile.core.session.ToolCallNode
 import com.labteto.dshmobile.core.session.ToolResultNode
 import com.labteto.dshmobile.core.session.TurnEndNode
 import com.labteto.dshmobile.core.session.TurnStartNode
 import com.labteto.dshmobile.core.session.UserMessageNode
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -170,5 +172,16 @@ class ChatNodeVisibilityTest {
             TurnEndNode(seq = 8, turn = 1, reasonKind = "completed"),
         )
         assertEquals(listOf(3L, 4L, 5L), nodes.filter { it.rendersContent() }.map { it.seq })
+    }
+
+    /** A rewind withdraws its range from the transcript; its marker stays, drawn as the divider. */
+    @Test fun `a rewind cut hides what it withdrew and keeps its marker as the divider`() {
+        fun user(seq: Long, kind: String = "user") = UserMessageNode(seq, "m$seq", listOf(ChatBlock("text", "text $seq")), kind)
+        val run = CommandNode(40, "command/run", Json.parseToJsonElement("""{"commandId":"c","name":"rewind","args":"@20 chat"}"""))
+        val done = CommandNode(42, "command/done", Json.parseToJsonElement("""{"commandId":"c","kind":"success","sourceEventSeq":41}"""))
+        val marker = user(41, kind = "dsh-rewind")
+        val rows = renderableChatNodes(listOf(user(10), user(20), user(30), run, marker, done, user(50)), running = false)
+        assertEquals(listOf(10L, 41L, 50L), rows.map { it.seq })
+        assertTrue((rows[1] as UserMessageNode).isRewindMarker)
     }
 }

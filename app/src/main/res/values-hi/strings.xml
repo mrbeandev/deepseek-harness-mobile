@@ -540,4 +540,21 @@
     <string name="harness_automation_history_error">डिलीवरी रिकॉर्ड लोड नहीं हो सके।</string>
     <string name="harness_automation_history_not_found">यह कार्य अब उपलब्ध नहीं है।</string>
     <string name="harness_automation_history_cursor_error">रिकॉर्ड अपडेट किए गए हैं।</string>
+
+    <!-- dsh-rewind picker (port of the plugin's web popover) -->
+    <string name="rewind_marker">यहाँ तक रिवाइंड किया गया</string>
+    <string name="rewind_no_text">(कोई टेक्स्ट नहीं)</string>
+    <string name="rewind_to">यहाँ रिवाइंड करें: %1$s</string>
+    <string name="rewind_mode_chat">केवल बातचीत रिवाइंड करें</string>
+    <string name="rewind_mode_chat_hint">केवल मॉडल संदर्भ काटें; वर्कस्पेस फ़ाइलें अछूती रहें</string>
+    <string name="rewind_mode_both">बातचीत और कोड रिवाइंड करें</string>
+    <string name="rewind_mode_both_hint">संदर्भ काटें और वर्कस्पेस फ़ाइलें पुनर्स्थापित करें</string>
+    <string name="rewind_checking">फ़ाइल परिवर्तनों की जाँच हो रही है…</string>
+    <string name="rewind_no_changes">इस संदेश के बाद कोई ट्रैक किया गया फ़ाइल परिवर्तन नहीं; केवल बातचीत रिवाइंड</string>
+    <string name="rewind_impact_failed">प्रभाव सूची प्राप्त नहीं हो सकी: %1$s</string>
+    <string name="rewind_no_candidates">इस सेशन में अभी रिवाइंड करने के लिए कोई संदेश नहीं है।</string>
+    <string name="rewind_impact_restore">%1$s पुनर्स्थापित करें</string>
+    <string name="rewind_impact_delete">%1$s हटाएं</string>
+    <string name="rewind_confirm">रिवाइंड की पुष्टि करें</string>
+    <string name="command_popup_no_matches">कोई मेल नहीं</string>
 </resources>
