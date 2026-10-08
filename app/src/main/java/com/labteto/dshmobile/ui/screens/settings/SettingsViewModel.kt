@@ -6,7 +6,7 @@ import com.labteto.dshmobile.connection.AppSettings
 import com.labteto.dshmobile.connection.ConnectionManager
 import com.labteto.dshmobile.connection.ConnectionUiState
 import com.labteto.dshmobile.connection.HostsStore
-import com.labteto.dshmobile.connection.RelayCredentialStore
+import com.labteto.dshmobile.connection.HarnessSessionStore
 import com.labteto.dshmobile.update.UpdateChecker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -45,7 +45,7 @@ val LanguageOptions = listOf(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val hostsStore: HostsStore,
-    private val credentials: RelayCredentialStore,
+    private val sessions: HarnessSessionStore,
     private val connectionManager: ConnectionManager,
     private val updateChecker: UpdateChecker,
 ) : ViewModel() {
@@ -80,16 +80,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     /**
-     * Forget every remembered harness; the connect screen starts from discovery again.
+     * Forget every remembered harness and every session cookie that went with one.
      *
-     * Relay credentials go with them. `removeHost` already drops each one, and the sweep afterwards
-     * catches anything orphaned by an earlier build — a stored bearer token nothing can present any
-     * more is only a liability. Revoking the device entry itself happens on the relay, not here.
+     * `removeHost` already drops each cookie; the sweep afterwards catches anything orphaned by an
+     * earlier build — a stored credential nothing can present any more is only a liability.
      */
     fun forgetHosts(onDone: () -> Unit = {}) {
         viewModelScope.launch {
             hostsStore.hosts.first().forEach { hostsStore.removeHost(it.id) }
-            credentials.clear()
+            sessions.clear()
             onDone()
         }
     }

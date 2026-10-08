@@ -41,9 +41,9 @@ class HostInputTest {
     }
 
     @Test
-    fun `prefixed relay identity is distinct from its root and other prefixes`() {
-        val root = HostConfig("root-id", "relay", "relay.test", 443, useTls = true, relayDeviceId = "root-device")
-        val prefixed = root.copy(id = "prefix-id", basePath = "/team", relayDeviceId = "team-device")
+    fun `prefixed endpoint identity is distinct from its root and other prefixes`() {
+        val root = HostConfig("root-id", "proxy", "relay.test", 443, useTls = true)
+        val prefixed = root.copy(id = "prefix-id", basePath = "/team")
         org.junit.Assert.assertNotEquals(root.baseUrl, prefixed.baseUrl)
         org.junit.Assert.assertNotEquals(root.authority, prefixed.authority)
         org.junit.Assert.assertNotEquals(prefixed.baseUrl, prefixed.copy(basePath = "/other").baseUrl)
@@ -94,5 +94,46 @@ class HostInputTest {
         assertEquals("http://192.168.1.20:3080", harnessBaseUrl("192.168.1.20", 3080, useTls = false))
         assertEquals("https://agent.home:443", harnessBaseUrl("agent.home", 443, useTls = true))
         assertEquals("http://[::1]:3080", harnessBaseUrl("::1", 3080, useTls = false))
+    }
+
+    // ---- resolveEndpoint: what the connect form dials for what was pasted ----------------------
+
+    @Test
+    fun `a bare public hostname is a tunnel so it gets https on 443`() {
+        assertEquals(ResolvedEndpoint("dsh.example.com", 443, true, ""), resolveEndpoint("dsh.example.com"))
+        assertEquals(ResolvedEndpoint("dsh.example.com", 443, true, ""), resolveEndpoint("https://dsh.example.com/"))
+    }
+
+    @Test
+    fun `a bare local address is a harness so it gets http on 3080`() {
+        assertEquals(ResolvedEndpoint("192.168.1.20", 3080, false, ""), resolveEndpoint("192.168.1.20"))
+        assertEquals(ResolvedEndpoint("localhost", 3080, false, ""), resolveEndpoint("localhost"))
+        assertEquals(ResolvedEndpoint("desktop.local", 3080, false, ""), resolveEndpoint("desktop.local"))
+        assertEquals(ResolvedEndpoint("desktop", 3080, false, ""), resolveEndpoint("desktop"))
+    }
+
+    @Test
+    fun `an explicit port or scheme always wins`() {
+        assertEquals(ResolvedEndpoint("192.168.1.20", 8080, false, ""), resolveEndpoint("192.168.1.20:8080"))
+        assertEquals(ResolvedEndpoint("agent.home", 443, true, ""), resolveEndpoint("agent.home:443"))
+        assertEquals(ResolvedEndpoint("agent.example.com", 80, false, ""), resolveEndpoint("http://agent.example.com"))
+        assertEquals(ResolvedEndpoint("agent.home", 3080, false, ""), resolveEndpoint("http://agent.home"))
+        assertEquals(ResolvedEndpoint("dsh.example.com", 8443, true, "/dsh"), resolveEndpoint("https://dsh.example.com:8443/dsh/"))
+    }
+
+    /** The whole startup line can be pasted; the token rides along and the query is dropped. */
+    @Test
+    fun `the printed startup url resolves and its token is readable`() {
+        val line = "http://127.0.0.1:3080/?token=abc123"
+        assertEquals(ResolvedEndpoint("127.0.0.1", 3080, false, ""), resolveEndpoint(line))
+        assertEquals("abc123", tokenInAddress(line))
+        assertEquals("abc123", tokenInAddress("dsh web: http://192.168.1.20:3080/?token=abc123&x=1"))
+        assertNull(tokenInAddress("https://dsh.example.com"))
+    }
+
+    @Test
+    fun `nothing usable yields null`() {
+        assertNull(resolveEndpoint(""))
+        assertNull(resolveEndpoint("ftp://x"))
     }
 }

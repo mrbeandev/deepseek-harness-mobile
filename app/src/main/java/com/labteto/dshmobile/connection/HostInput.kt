@@ -97,3 +97,66 @@ internal fun harnessBaseUrl(host: String, port: Int, useTls: Boolean, basePath: 
 
 internal fun endpointKey(host: String, port: Int, useTls: Boolean, basePath: String = ""): String =
     (if (useTls) "https://" else "") + urlAuthority(host, port) + basePath
+
+/** A fully resolved endpoint the connect form will dial. */
+data class ResolvedEndpoint(
+    val host: String,
+    val port: Int,
+    val useTls: Boolean,
+    val basePath: String,
+) {
+    val isLoopback: Boolean get() = host == "127.0.0.1" || host == "localhost" || host == "::1"
+    val authority: String get() = endpointKey(host, port, useTls, basePath)
+    val baseUrl: String get() = harnessBaseUrl(host, port, useTls, basePath)
+}
+
+/** The harness web profile's default listen port. */
+internal const val DEFAULT_HARNESS_PORT = 3080
+
+/**
+ * Turn the connect form's address field into something dialable; null when nothing usable was typed.
+ *
+ * The rules follow what people actually paste:
+ * - `https://dsh.example.com` — a Cloudflare Tunnel (or any TLS reverse proxy): port 443.
+ * - `http://192.168.1.20:3080/?token=…` — the harness's own startup line: the port it names.
+ * - `192.168.1.20` or `localhost` with no scheme and no port — a local harness: plain HTTP on 3080.
+ * - `dsh.example.com` with no scheme and no port — a public hostname, so a tunnel: HTTPS on 443.
+ *   Names ending in `.local`/`.lan`/`.home` are LAN names and get the local default instead.
+ * A port typed in the field always wins.
+ */
+fun resolveEndpoint(raw: String): ResolvedEndpoint? {
+    val input = parseHostInput(raw) ?: return null
+    val local = isLocalName(input.host)
+    val useTls = input.useTls ?: (input.port == 443 || (input.port == null && !local))
+    val port = input.port ?: when {
+        input.useTls == true -> 443
+        input.useTls == false -> if (local) DEFAULT_HARNESS_PORT else 80
+        useTls -> 443
+        else -> DEFAULT_HARNESS_PORT
+    }
+    return ResolvedEndpoint(input.host, port, useTls, input.basePath)
+}
+
+/**
+ * The launch token carried in a pasted startup URL (`…/?token=abc`), or null.
+ *
+ * Lets someone paste the whole line the harness printed into the address field and be done.
+ */
+fun tokenInAddress(raw: String): String? {
+    val marker = raw.indexOf("token=")
+    if (marker < 0) return null
+    return raw.substring(marker + "token=".length)
+        .takeWhile { it != '&' && it != '#' && !it.isWhitespace() }
+        .takeIf { it.isNotEmpty() }
+}
+
+/** IP literals, `localhost`, single-label names and conventional LAN suffixes. */
+private fun isLocalName(host: String): Boolean {
+    val h = host.lowercase()
+    if (h == "localhost" || h.contains(':')) return true
+    if (h.split('.').let { parts -> parts.size == 4 && parts.all { p -> p.toIntOrNull()?.let { it in 0..255 } == true } }) return true
+    if (!h.contains('.')) return true
+    return LOCAL_SUFFIXES.any { h.endsWith(it) }
+}
+
+private val LOCAL_SUFFIXES = listOf(".local", ".lan", ".home", ".internal", ".localdomain", ".home.arpa")

@@ -9,11 +9,9 @@ and paste that startup link or its token. The app exchanges it for the host's br
 session cookie through the existing transport. A token is accepted only by the root
 exchange; it is not an API bearer token. Keep the startup link private.
 
-Authentication does not encrypt plain HTTP. Use a trusted LAN, a TLS reverse proxy,
-or the separately maintained [dsh-relay](https://github.com/sorsama/deepseek-harness-relay).
-A TLS proxy encrypts traffic; the harness still authenticates it. The relay has its own
-pairing and credential policy. Current-master relay validation is recorded separately
-in [the validation report](../docs/VALIDATION-0.11.0.md).
+Authentication does not encrypt plain HTTP. Use a trusted LAN, or — recommended for anything
+beyond your own Wi-Fi — a Cloudflare Tunnel or TLS reverse proxy as described in the
+[main README](../README.md). A tunnel or proxy encrypts traffic; the harness still authenticates it.
 
 For USB or an emulator, keep the default loopback listener and run
 `adb reverse tcp:3080 tcp:3080`, then connect to `127.0.0.1:3080` and sign in.
@@ -64,9 +62,8 @@ a valid browser session gets 401.
    dsh web --trusted-host myhost.local
    ```
 
-4. In DSH Mobile, make sure **Local network** is selected on the connect
-   screen, then tap **Scan network** or enter `192.168.1.20` / `3080` manually.
-   Relay mode will not find a harness patched this way — it looks for relays.
+4. In DSH Mobile, enter `192.168.1.20:3080` as the harness URL and paste the
+   token from the startup line, then tap **Connect**.
 
 ## HTTPS via your own reverse proxy
 
@@ -141,13 +138,6 @@ If you changed the port, make sure the app's Port field matches.
 The trust fence only auto-trusts the IP literals it derives from the bind host. Connect using the
 IP address rather than a hostname, or start the harness with `dsh web --trusted-host myhost.local`.
 
-### "Not on this phone's network"
-
-The address you typed is outside the phone's own /24, so nothing on the phone can route to it — and
-**Scan network** cannot find it either, since the sweep only walks the phone's own subnet. Different
-bands of one SSID (2.4 GHz vs 5 GHz) are normally the same subnet and are fine; a *guest* SSID
-usually is not. Compare `ipconfig` on the computer with the address the app reports.
-
 ### "The secure (HTTPS) connection failed"
 
 The socket opened but the TLS handshake did not survive it. Two causes, in order of likelihood:
@@ -179,8 +169,7 @@ ipconfig getifaddr en0        # macOS (Wi-Fi)
   on a trusted network, and see [../docs/SECURITY.md](../docs/SECURITY.md).
 - **Privileged features**: since harness 0.1.2 there is no loopback-only tier
   — a device that has exchanged the startup link reaches settings, credentials,
-  host directory pickers and agent-preset authoring like the web GUI does. Only
-  a relay's own `privilegedMethods` policy narrows that (see
+  host directory pickers and agent-preset authoring like the web GUI does (see
   [../docs/SECURITY.md](../docs/SECURITY.md)).
 - **File attachments**: a file attached in the app is copied verbatim onto this
   computer, into the harness's attachment store, over the same unencrypted link.

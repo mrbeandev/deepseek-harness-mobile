@@ -147,10 +147,10 @@ class ConnectionManager @Inject constructor(
         override fun onGenerationFailed(attempt: Int, failure: GenerationFailure) {
             val host = activeHost
             _state.value = _state.value.copy(
-                failure = ConnectFailure.from(failure, relay = host?.isRelay == true),
+                failure = ConnectFailure.from(failure),
                 attempts = attempt,
             )
-            if (host != null && isTerminalForRelay(host, failure)) stopRetrying()
+            if (host != null && isTerminal(failure)) stopRetrying()
         }
     }
 
@@ -194,10 +194,9 @@ class ConnectionManager @Inject constructor(
         val host = activeHost ?: return
         loop?.stop()
         scope.launch {
-            // Rebuilding through the factory rather than reusing `api` blindly: a relay token can be
-            // rotated or dropped while the app is backgrounded, and the credential is baked into the
-            // client at construction. This is the path [KeepAliveWorker] takes, which is exactly
-            // when that is most likely to have happened.
+            // Rebuilding through the factory rather than reusing `api` blindly: the session cookie
+            // can be replaced (a fresh sign-in) while the app is backgrounded, and the credential is
+            // baked into the client at construction.
             api = clientFactory.clientFor(host)
             loop = ConnectionLoop(muxFactory(host), sinks, LoopConfig()).also { it.start() }
         }
@@ -207,43 +206,35 @@ class ConnectionManager @Inject constructor(
      * A per-generation mux builder for [host].
      *
      * The loop calls this once per attempt and owns the socket's lifetime, so the credential is
-     * re-read on every reconnect rather than baked in once. That matters for the same reason
-     * [reconnectIfNeeded] rebuilds its client: a relay token can rotate while the app is
-     * backgrounded, and a socket built with the old one is refused at the upgrade.
+     * re-read on every reconnect rather than baked in once, for the same reason
+     * [reconnectIfNeeded] rebuilds its client.
      */
     private fun muxFactory(host: HostConfig): () -> RemoteStreamMux = {
         kotlinx.coroutines.runBlocking { clientFactory.muxFor(host) }
     }
 
     /**
-     * Whether this failure means retrying is pointless against [host].
+     * Whether this failure means retrying is pointless.
      *
-     * The relay answers 403 for a missing, expired or revoked credential, and none of those come
-     * back on their own — the client integration contract says so outright: "prompt to pair again,
-     * do not retry with backoff". A changed certificate is the same kind of fact. The loop's default
-     * is to retry forever, which against a relay that revoked this device is a request every few
-     * seconds until the app is killed.
+     * A 401 means this device has no session — the startup token has to be pasted again — and a
+     * 403 means the harness's `trustedHosts` does not include this address. Neither fixes itself,
+     * and the loop's default is to retry forever, so the loop stops and the failure stays on
+     * screen with its fix.
      */
-    private fun isTerminalForRelay(host: HostConfig, failure: GenerationFailure): Boolean {
-        if (!host.isRelay) return false
+    private fun isTerminal(failure: GenerationFailure): Boolean {
         val kind = when (failure) {
             is GenerationFailure.MuxFailed -> failure.kind
             is GenerationFailure.ReadyFailed -> TransportFailures.of(failure.error)
             is GenerationFailure.MuxTimedOut -> null
         }
-        // UNAUTHENTICATED is terminal for a different reason. Behind a relay it is the harness
-        // refusing the relay's own request, not this device's credential — but nothing the phone
-        // retries will make the relay sign in; that takes a relay fixed on its own computer.
-        return kind == TransportFailure.TRUST_FENCE ||
-            kind == TransportFailure.CERTIFICATE_PIN ||
-            kind == TransportFailure.UNAUTHENTICATED
+        return kind == TransportFailure.TRUST_FENCE || kind == TransportFailure.UNAUTHENTICATED
     }
 
     /**
      * Stop the loop but keep the failure on screen.
      *
      * Not [disconnect]: that resets the whole state object, which would wipe the very explanation
-     * the user needs in order to know that pairing again is the fix.
+     * the user needs in order to know that signing in again is the fix.
      */
     private fun stopRetrying() {
         loop?.stop()

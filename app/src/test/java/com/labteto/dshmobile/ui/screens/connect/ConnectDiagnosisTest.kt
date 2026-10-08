@@ -102,37 +102,7 @@ class ConnectDiagnosisTest {
         )
     }
 
-    /**
-     * A relay answers 403 for a missing, expired or revoked token, and never 401 — so the status is
-     * identical to the harness's own `Host` fence. The only thing that separates them is whether
-     * this device ever paired with the address, which is knowledge the app has and the wire does
-     * not.
-     */
-    @Test
-    fun `a 403 from a paired relay means pair again, not add a trusted host`() {
-        assertEquals(
-            ConnectFailure.PairingRequired,
-            ConnectFailure.from(ProbeOutcome.TrustFence, relay = true),
-        )
-        assertEquals(
-            ConnectFailure.PairingRequired,
-            ConnectFailure.from(
-                GenerationFailure.MuxFailed(TransportFailure.TRUST_FENCE, "403"),
-                relay = true,
-            ),
-        )
-        val fenced = RpcError(
-            code = "forbidden",
-            message = "forbidden",
-            details = TransportFailures.details(TransportFailure.TRUST_FENCE, 403),
-        )
-        assertEquals(
-            ConnectFailure.PairingRequired,
-            ConnectFailure.from(GenerationFailure.ReadyFailed(fenced), relay = true),
-        )
-    }
-
-    /** Same status, no relay: the diagnosis that has always been right stays right. */
+    /** The harness's `Host` fence: fixed by adding the address to `trustedHosts`. */
     @Test
     fun `a 403 from a plain harness is still the trust fence`() {
         assertEquals(ConnectFailure.TrustFence, ConnectFailure.from(ProbeOutcome.TrustFence))
@@ -142,73 +112,13 @@ class ConnectDiagnosisTest {
         )
     }
 
-    /**
-     * A relay answers 403, never 401 — so a 401 behind one is the harness refusing the relay's own
-     * upstream request, which is the relay's browser session and not this device's token. Telling
-     * the two apart matters because "pair again" cannot fix the second one: the device was never
-     * the problem, and the person is sent to a pairing page that will keep succeeding.
-     */
-    @Test
-    fun `a 401 through a relay is the relay's own session, not this device's token`() {
-        assertEquals(
-            ConnectFailure.RelayUnauthenticated,
-            ConnectFailure.from(ProbeOutcome.RelayUnauthenticated),
-        )
-        assertEquals(
-            ConnectFailure.RelayUnauthenticated,
-            ConnectFailure.from(ProbeOutcome.Unauthenticated, relay = true),
-        )
-        assertEquals(
-            ConnectFailure.RelayUnauthenticated,
-            ConnectFailure.from(
-                GenerationFailure.MuxFailed(TransportFailure.UNAUTHENTICATED, "401"),
-                relay = true,
-            ),
-        )
-        val unauthenticated = RpcError(
-            code = "unauthenticated",
-            message = "harness has no browser session for this client (HTTP 401)",
-            details = TransportFailures.details(TransportFailure.UNAUTHENTICATED, 401),
-        )
-        assertEquals(
-            ConnectFailure.RelayUnauthenticated,
-            ConnectFailure.from(GenerationFailure.ReadyFailed(unauthenticated), relay = true),
-        )
-    }
-
-    /** The same 401 with no relay in front stays the harness's own missing browser session. */
+    /** A 401 is the harness's own missing browser session: paste the startup token. */
     @Test
     fun `a 401 from a plain harness is still unauthenticated`() {
         assertEquals(ConnectFailure.Unauthenticated, ConnectFailure.from(ProbeOutcome.Unauthenticated))
         assertEquals(
             ConnectFailure.Unauthenticated,
             ConnectFailure.from(GenerationFailure.MuxFailed(TransportFailure.UNAUTHENTICATED, "401")),
-        )
-    }
-
-    /** The probe can decide this itself when it already knows the address is a relay. */
-    @Test
-    fun `relay-specific probe outcomes map straight through`() {
-        assertEquals(ConnectFailure.PairingRequired, ConnectFailure.from(ProbeOutcome.PairingRequired))
-        assertEquals(
-            ConnectFailure.CertificateChanged,
-            ConnectFailure.from(ProbeOutcome.CertificateChanged),
-        )
-    }
-
-    /** A changed key is never a transport failure to retry into; it needs the user to look at it. */
-    @Test
-    fun `a pin mismatch is reported as a changed certificate either way`() {
-        assertEquals(
-            ConnectFailure.CertificateChanged,
-            ConnectFailure.from(GenerationFailure.MuxFailed(TransportFailure.CERTIFICATE_PIN, null)),
-        )
-        assertEquals(
-            ConnectFailure.CertificateChanged,
-            ConnectFailure.from(
-                GenerationFailure.MuxFailed(TransportFailure.CERTIFICATE_PIN, null),
-                relay = true,
-            ),
         )
     }
 }

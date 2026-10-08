@@ -24,23 +24,19 @@ import javax.inject.Singleton
 @Singleton
 class HostsStore @Inject constructor(
     private val dataStore: DataStore<Preferences>,
-    private val credentials: RelayCredentialStore,
+    private val sessions: HarnessSessionStore,
     @ApplicationContext private val context: Context,
 ) {
     private object Keys {
         val HOSTS = stringPreferencesKey("hosts_json")
         val AUTO_LAST = booleanPreferencesKey("auto_last")
-        val AUTO_LAN = booleanPreferencesKey("auto_lan")
         val AUTO_LOOPBACK = booleanPreferencesKey("auto_loopback")
-        val AUTO_RELAY = booleanPreferencesKey("auto_relay")
-        val CONNECT_MODE = stringPreferencesKey("connect_mode")
         val BACKGROUND = booleanPreferencesKey("background")
         val NOTIFY_TURN = booleanPreferencesKey("notify_turn")
         val NOTIFY_GOAL = booleanPreferencesKey("notify_goal")
         val NOTIFY_ACTION = booleanPreferencesKey("notify_action")
         val THEME = stringPreferencesKey("theme")
         val LOCALE = stringPreferencesKey("locale")
-        val PORTS = stringPreferencesKey("ports_json")
         val LAST_SESSIONS = stringPreferencesKey("last_sessions_json")
         val SESSION_SORT = stringPreferencesKey("session_sort")
         val UPDATE_CHECK = booleanPreferencesKey("update_check")
@@ -58,24 +54,15 @@ class HostsStore @Inject constructor(
     }
 
     val settings: Flow<AppSettings> = dataStore.data.map { prefs ->
-        val ports = prefs[Keys.PORTS]
-            ?.split(',')
-            ?.mapNotNull { it.trim().toIntOrNull() }
-            ?.takeIf { it.isNotEmpty() }
-            ?: listOf(3080)
         AppSettings(
             autoConnectLast = prefs[Keys.AUTO_LAST] ?: true,
-            autoConnectLan = prefs[Keys.AUTO_LAN] ?: false,
             autoConnectLoopback = prefs[Keys.AUTO_LOOPBACK] ?: true,
-            autoConnectRelay = prefs[Keys.AUTO_RELAY] ?: false,
-            connectMode = ConnectMode.of(prefs[Keys.CONNECT_MODE]),
             keepConnectedInBackground = prefs[Keys.BACKGROUND] ?: false,
             notifyTurnComplete = prefs[Keys.NOTIFY_TURN] ?: true,
             notifyGoal = prefs[Keys.NOTIFY_GOAL] ?: true,
             notifyNeedsAction = prefs[Keys.NOTIFY_ACTION] ?: true,
             themePreference = prefs[Keys.THEME] ?: "system",
             localeOverride = prefs[Keys.LOCALE],
-            knownPorts = ports,
             updateCheckEnabled = prefs[Keys.UPDATE_CHECK] ?: true,
             dismissedUpdate = prefs[Keys.DISMISSED_UPDATE],
         )
@@ -112,12 +99,12 @@ class HostsStore @Inject constructor(
         isLoopback: Boolean,
         useTls: Boolean = false,
         description: HostDescription? = null,
-        relay: RelayIdentity? = null,
         basePath: String = "",
+        id: String? = null,
     ): HostConfig {
-        val existing = hosts.first().firstOrNull { it.baseUrl == harnessBaseUrl(host, port, relay?.useTls ?: useTls, basePath) }
+        val existing = hosts.first().firstOrNull { it.baseUrl == harnessBaseUrl(host, port, useTls, basePath) }
         val config = HostConfig(
-            id = existing?.id ?: UUID.randomUUID().toString(),
+            id = existing?.id ?: id ?: UUID.randomUUID().toString(),
             name = name,
             host = host,
             port = port,
@@ -125,15 +112,7 @@ class HostsStore @Inject constructor(
             isLoopback = isLoopback,
             lastConnectedAt = System.currentTimeMillis(),
             lastHome = description?.home ?: existing?.lastHome,
-            // A fresh pairing replaces the whole relay identity rather than merging into it: a
-            // re-pair mints a new device id, may move between TLS postures, and can land on a
-            // regenerated key. Keeping any of the previous three would leave the record describing
-            // two different enrolments at once. A pairing also decides the transport, which is why
-            // it outranks the caller's `useTls` here rather than sitting beside it.
-            useTls = relay?.useTls ?: useTls,
-            relayFingerprint = relay?.fingerprint ?: existing?.relayFingerprint,
-            relayDeviceId = relay?.deviceId ?: existing?.relayDeviceId,
-            relayTokenExpiresAt = relay?.tokenExpiresAt ?: existing?.relayTokenExpiresAt ?: 0L,
+            useTls = useTls,
         )
         upsertHost(config)
         return config
@@ -154,16 +133,10 @@ class HostsStore @Inject constructor(
         )
     }
 
-    /**
-     * Forget an endpoint, and the credential that went with it.
-     *
-     * The token is dropped in the same act rather than left to expire. It would otherwise outlive
-     * everything that could ever present it, and a stored secret nothing can use is only a liability
-     * — the relay's own device entry is revoked from the relay, not from here.
-     */
+    /** Forget an endpoint, and the harness session that went with it. */
     suspend fun removeHost(id: String) {
         persist(hosts.first().filterNot { it.id == id })
-        credentials.remove(id)
+        sessions.remove(id)
     }
 
     /**
@@ -203,12 +176,6 @@ class HostsStore @Inject constructor(
         dataStore.edit { it[Keys.DISMISSED_UPDATE] = version }
     }
 
-    suspend fun addKnownPort(port: Int) {
-        val s = settingsOnce()
-        val ports = (s.knownPorts + port).distinct().take(8)
-        dataStore.edit { it[Keys.PORTS] = ports.joinToString(",") }
-    }
-
     suspend fun setSetting(transform: (AppSettings) -> AppSettings) {
         val next = transform(settingsOnce())
         // Mirrored out to SharedPreferences as well: the scheme has to be readable before any
@@ -216,10 +183,7 @@ class HostsStore @Inject constructor(
         DshApplication.storeThemePreference(context, next.themePreference)
         dataStore.edit { prefs ->
             prefs[Keys.AUTO_LAST] = next.autoConnectLast
-            prefs[Keys.AUTO_LAN] = next.autoConnectLan
             prefs[Keys.AUTO_LOOPBACK] = next.autoConnectLoopback
-            prefs[Keys.AUTO_RELAY] = next.autoConnectRelay
-            prefs[Keys.CONNECT_MODE] = next.connectMode
             prefs[Keys.BACKGROUND] = next.keepConnectedInBackground
             prefs[Keys.NOTIFY_TURN] = next.notifyTurnComplete
             prefs[Keys.NOTIFY_GOAL] = next.notifyGoal
@@ -239,17 +203,3 @@ class HostsStore @Inject constructor(
         const val MAX_REMEMBERED_HOSTS = 8
     }
 }
-
-/**
- * What a successful relay pairing tells this app about an endpoint.
- *
- * Grouped rather than passed as four loose parameters because they are only ever meaningful
- * together: a fingerprint without a device id describes a relay this device cannot talk to, and a
- * device id without a scheme describes one it cannot address.
- */
-data class RelayIdentity(
-    val deviceId: String,
-    val useTls: Boolean,
-    val fingerprint: String?,
-    val tokenExpiresAt: Long,
-)
