@@ -25,7 +25,6 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.runtime.key
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
-import androidx.compose.foundation.text.ClickableText
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -43,6 +42,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.labteto.dshmobile.ui.theme.DsColors
 import com.labteto.dshmobile.ui.theme.DsShapes
+import androidx.compose.foundation.text.InlineTextContent
+import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.Placeholder
+import androidx.compose.ui.text.PlaceholderVerticalAlign
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.unit.sp
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.text.TextLayoutResult
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import com.labteto.dshmobile.ui.theme.DsTheme
 import com.labteto.dshmobile.ui.theme.DsType
 import com.labteto.dshmobile.ui.theme.DshTheme
@@ -87,8 +99,11 @@ fun MarkdownText(text: String, modifier: Modifier = Modifier) {
                     }
                     InlineMarkdown(block.text, style.copy(color = colors.labelPrimary), Modifier.padding(top = 10.dp))
                 }
+                // A paragraph's line breaks are kept, as the web client keeps them: a model that
+                // lists one file per line meant one file per line, and joining with a space made
+                // `README.md src` out of two separate names.
                 is MdBlock.Paragraph -> InlineMarkdown(
-                    block.lines.joinToString(" "),
+                    block.lines.joinToString("\n"),
                     DsType.mdBody.copy(color = colors.labelPrimary),
                     Modifier.fillMaxWidth(),
                 )
@@ -230,6 +245,38 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
     val openFile = LocalFileOpener.current
     val uriHandler = LocalUriHandler.current
     val hasLinks = remember(result) { result.getStringAnnotations("url", 0, result.length).isNotEmpty() }
+    // Each pill's width is its label at the pill's own (slightly smaller, mono) size plus icon
+    // and padding, measured here so the line is laid out around it. One slot id for all of them;
+    // the alternate text carries the label.
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val pillStyle = remember(style) { style.copy(fontFamily = DsType.codeFont, fontSize = style.fontSize * 0.9f) }
+    val inlineContent = remember(result, pillStyle) {
+        val pills = result.getStringAnnotations("path", 0, result.length)
+        if (pills.isEmpty()) emptyMap() else {
+            val lineHeight = style.lineHeight.takeIf { it.isSp }?.let { it.value } ?: (style.fontSize.value * 1.5f)
+            mapOf(
+                FILE_PILL_ID to InlineTextContent(
+                    Placeholder(
+                        width = with(density) {
+                            // The widest label this paragraph places, so every pill fits; a
+                            // narrower one simply has slack. One placeholder size per slot id.
+                            val widest = pills.maxOf { ann ->
+                                val label = result.text.substring(ann.start, ann.end).ifBlank { ann.item }
+                                measurer.measure(label, pillStyle).size.width
+                            }
+                            (widest + (13 + 4 + 16).dp.roundToPx()).toSp()
+                        },
+                        height = (lineHeight * 0.95f).sp,
+                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
+                    ),
+                ) { alt ->
+                    val path = pills.firstOrNull { result.text.substring(it.start, it.end) == alt }?.item ?: alt
+                    FilePill(path = path, label = alt, style = style)
+                },
+            )
+        }
+    }
     if (!hasLinks) {
         // Nothing to tap, so the text is laid out inside a SelectionContainer instead: long-press
         // selects and the platform handles the copy affordance. A ClickableText swallows the
@@ -243,18 +290,28 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
         }
         return
     }
-    ClickableText(
-        result, modifier = modifier, style = style,
-        onClick = { offset ->
-            result.getStringAnnotations("url", offset, offset).firstOrNull()?.item?.let { raw ->
-                // http(s) goes to the browser, anything else is treated as a path into the
-                // session's own files. The scheme check lives in core so a reply cannot smuggle
-                // `intent:`/`file:` past this handler by dressing it up as a link.
-                val url = safeHttpUrl(raw)
-                if (url != null) runCatching { uriHandler.openUri(url) }
-                else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let(openFile)
+    // `Text` with its own hit test rather than `ClickableText`: the pills are inline content, which
+    // ClickableText cannot host. Taps resolve to a character offset through the layout result,
+    // exactly as ClickableText does internally.
+    var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
+    Text(
+        result,
+        modifier = modifier.pointerInput(result) {
+            detectTapGestures { position ->
+                val offset = layout?.getOffsetForPosition(position) ?: return@detectTapGestures
+                result.getStringAnnotations("url", offset, offset).firstOrNull()?.item?.let { raw ->
+                    // http(s) goes to the browser, anything else is treated as a path into the
+                    // session's own files. The scheme check lives in core so a reply cannot smuggle
+                    // `intent:`/`file:` past this handler by dressing it up as a link.
+                    val url = safeHttpUrl(raw)
+                    if (url != null) runCatching { uriHandler.openUri(url) }
+                    else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let(openFile)
+                }
             }
         },
+        style = style,
+        inlineContent = inlineContent,
+        onTextLayout = { layout = it },
     )
 }
 
@@ -273,13 +330,55 @@ private fun buildInlineContent(
                 SpanStyle(fontFamily = codeStyle.fontFamily, color = codeStyle.color),
             ) { append(segment.text) }
             is InlineSegment.Link -> {
+                val path = if (safeHttpUrl(segment.url) == null) com.labteto.dshmobile.ui.screens.main.previewPath(segment.url) else null
                 builder.pushStringAnnotation("url", segment.url)
-                builder.withStyle(SpanStyle(color = colors.accent)) { append(segment.text) }
+                if (path != null) {
+                    // A path into the session's workspace is an artifact, not a web link: it is
+                    // drawn as a pill (see [InlineMarkdown]'s inlineContent) so it reads as a file
+                    // you can open, and never as a blue word that may go anywhere.
+                    builder.pushStringAnnotation("path", path)
+                    builder.appendInlineContent(FILE_PILL_ID, segment.text.ifBlank { path })
+                    builder.pop()
+                } else {
+                    builder.withStyle(SpanStyle(color = colors.accent)) { append(segment.text) }
+                }
                 builder.pop()
             }
         }
     }
     return builder.toAnnotatedString()
+}
+
+/** The inline-content slot every workspace-path pill is placed in. */
+private const val FILE_PILL_ID = "dsh.file-pill"
+
+/** A workspace path drawn as a pill: file or folder icon, then the path, on a bordered block. */
+@Composable
+private fun FilePill(path: String, label: String, style: TextStyle) {
+    val colors = DsTheme.colors
+    val folder = path.endsWith('/') || !path.substringAfterLast('/').contains('.')
+    Row(
+        Modifier
+            .clip(DsShapes.pill)
+            .background(colors.bgModulePlatform)
+            .border(1.dp, colors.borderL3, DsShapes.pill)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Icon(
+            if (folder) FeatherIcons.Folder else FeatherIcons.FileText,
+            null,
+            Modifier.size(13.dp),
+            tint = if (folder) colors.accent else colors.labelSecondary,
+        )
+        Text(
+            label,
+            style = style.copy(fontFamily = DsType.codeFont, fontSize = style.fontSize * 0.9f, color = colors.labelPrimary),
+            maxLines = 1,
+            softWrap = false,
+        )
+    }
 }
 
 // ---- Block renderers --------------------------------------------------------
