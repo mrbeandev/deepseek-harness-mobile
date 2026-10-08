@@ -93,6 +93,14 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 - 11 languages — English, 中文, हिन्दी, Español, Français, العربية, বাংলা, Português, Русский,
   اردو, ไทย (RTL aware).
 
+### Added in 0.15.0
+
+- A Check now button for updates in Settings > About. The automatic check also runs again when
+  you come back to the app after a few hours.
+- Workspace links in replies drawn as file and folder pills; a folder opens in Files.
+- A redesigned Details panel, Workspace screen and Settings, with archived sessions on a tab of
+  their own.
+
 ### Added in 0.14.0
 
 - A `/` menu above the composer with the session's commands and skills.
@@ -113,7 +121,7 @@ a [feature tour](https://github.com/sorsama/deepseek-harness-mobile/wiki/Feature
 
 - Android 8.0+ (minSdk 26).
 - A running [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness)
-  at `0.2.1-alpha.1`, the protocol baseline for DSH Mobile `0.14.0` (unchanged since `0.13.0`).
+  at `0.2.1-alpha.1`, the protocol baseline for DSH Mobile `0.15.0` (unchanged since `0.13.0`).
   Existing protocol fallbacks remain for `0.2.0-rc.1`, `0.1.7-rc.x` and `0.1.6-alpha.x`; new
   management features need host support. See [compatibility](docs/COMPATIBILITY.md) and the
   [0.13.0 validation status](docs/VALIDATION-0.13.0.md) for what has been checked on this baseline.
