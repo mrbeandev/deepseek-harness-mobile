@@ -44,7 +44,9 @@ import com.labteto.dshmobile.ui.theme.DsColors
 import com.labteto.dshmobile.ui.theme.DsShapes
 import androidx.compose.foundation.text.InlineTextContent
 import androidx.compose.foundation.text.appendInlineContent
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.Placeholder
 import androidx.compose.ui.text.PlaceholderVerticalAlign
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -82,9 +84,10 @@ val LocalFolderOpener = staticCompositionLocalOf<((String) -> Unit)?> { null }
 /**
  * Whether a workspace reference names a folder.
  *
- * The harness writes folder references with a trailing slash in its own file-reference grammar;
- * a model may omit it, so a last segment with no extension is read as a folder too. `Makefile`
- * and `LICENSE` are the known casualties, and they open in Files where one tap reaches them.
+ * A trailing slash says so outright. A model often omits it, so a last segment with no extension
+ * is read as a folder too. That is only a first guess: `Makefile` and `LICENSE` are files, and
+ * the Workspace opens them in Preview when the harness answers that they are not directories
+ * (and `.github`, read as a file, goes to Files the same way).
  */
 fun isFolderReference(path: String): Boolean {
     val trimmed = path.trim()
@@ -266,36 +269,25 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
     val openFolder = LocalFolderOpener.current
     val uriHandler = LocalUriHandler.current
     val hasLinks = remember(result) { result.getStringAnnotations("url", 0, result.length).isNotEmpty() }
-    // Each pill's width is its label at the pill's own (slightly smaller, mono) size plus icon
-    // and padding, measured here so the line is laid out around it. One slot id for all of them;
-    // the alternate text carries the label.
+    // Each pill has a slot of its own, as wide as its label at the pill's (slightly smaller, mono)
+    // size plus icon and padding, so the line is laid out around exactly that pill. A label wider
+    // than most of the screen is capped and ellipsized rather than run past the edge.
     val measurer = rememberTextMeasurer()
     val density = LocalDensity.current
+    val maxPillWidth = LocalConfiguration.current.screenWidthDp.dp * 0.7f
     val pillStyle = remember(style) { style.copy(fontFamily = DsType.codeFont, fontSize = style.fontSize * 0.9f) }
-    val inlineContent = remember(result, pillStyle) {
-        val pills = result.getStringAnnotations("path", 0, result.length)
-        if (pills.isEmpty()) emptyMap() else {
-            val lineHeight = style.lineHeight.takeIf { it.isSp }?.let { it.value } ?: (style.fontSize.value * 1.5f)
-            mapOf(
-                FILE_PILL_ID to InlineTextContent(
-                    Placeholder(
-                        width = with(density) {
-                            // The widest label this paragraph places, so every pill fits; a
-                            // narrower one simply has slack. One placeholder size per slot id.
-                            val widest = pills.maxOf { ann ->
-                                val label = result.text.substring(ann.start, ann.end).ifBlank { ann.item }
-                                measurer.measure(label, pillStyle).size.width
-                            }
-                            (widest + (13 + 4 + 16).dp.roundToPx()).toSp()
-                        },
-                        height = (lineHeight * 0.95f).sp,
-                        placeholderVerticalAlign = PlaceholderVerticalAlign.TextCenter,
-                    ),
-                ) { alt ->
-                    val path = pills.firstOrNull { result.text.substring(it.start, it.end) == alt }?.item ?: alt
-                    FilePill(path = path, label = alt, style = style)
-                },
-            )
+    val inlineContent = remember(result, pillStyle, density, maxPillWidth) {
+        val lineHeight = style.lineHeight.takeIf { it.isSp }?.let { it.value } ?: (style.fontSize.value * 1.5f)
+        result.getStringAnnotations("path", 0, result.length).withIndex().associate { (index, ann) ->
+            val label = result.text.substring(ann.start, ann.end)
+            val width = with(density) {
+                // 1dp of slack so rounding through sp never ellipsizes a label that fits.
+                val natural = measurer.measure(label, pillStyle).size.width + (13 + 4 + 16 + 1).dp.roundToPx()
+                minOf(natural, maxPillWidth.roundToPx()).toSp()
+            }
+            filePillId(index) to InlineTextContent(
+                Placeholder(width, (lineHeight * 0.95f).sp, PlaceholderVerticalAlign.TextCenter),
+            ) { FilePill(path = ann.item, label = label, style = style) }
         }
     }
     if (!hasLinks) {
@@ -313,22 +305,22 @@ private fun InlineMarkdown(text: String, style: TextStyle, modifier: Modifier = 
     }
     // `Text` with its own hit test rather than `ClickableText`: the pills are inline content, which
     // ClickableText cannot host. Taps resolve to a character offset through the layout result,
-    // exactly as ClickableText does internally.
+    // exactly as ClickableText does internally. A pill is clickable itself: the offset under its
+    // right half is the one after it, so an offset lookup would leave half of every pill dead.
     var layout by remember { mutableStateOf<TextLayoutResult?>(null) }
     Text(
         result,
         modifier = modifier.pointerInput(result) {
             detectTapGestures { position ->
                 val offset = layout?.getOffsetForPosition(position) ?: return@detectTapGestures
+                if (result.getStringAnnotations("path", offset, offset).isNotEmpty()) return@detectTapGestures
                 result.getStringAnnotations("url", offset, offset).firstOrNull()?.item?.let { raw ->
                     // http(s) goes to the browser, anything else is treated as a path into the
                     // session's own files. The scheme check lives in core so a reply cannot smuggle
                     // `intent:`/`file:` past this handler by dressing it up as a link.
                     val url = safeHttpUrl(raw)
                     if (url != null) runCatching { uriHandler.openUri(url) }
-                    else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let { path ->
-                        if (isFolderReference(path) && openFolder != null) openFolder(path) else openFile(path)
-                    }
+                    else com.labteto.dshmobile.ui.screens.main.previewPath(raw)?.let { openWorkspaceReference(it, openFile, openFolder) }
                 }
             }
         },
@@ -344,6 +336,7 @@ private fun buildInlineContent(
     colors: DsColors,
 ): AnnotatedString {
     val builder = AnnotatedString.Builder()
+    var pills = 0
     parseInlineSegments(text).forEach { segment ->
         when (segment) {
             is InlineSegment.Plain -> builder.append(segment.text)
@@ -360,7 +353,7 @@ private fun buildInlineContent(
                     // drawn as a pill (see [InlineMarkdown]'s inlineContent) so it reads as a file
                     // you can open, and never as a blue word that may go anywhere.
                     builder.pushStringAnnotation("path", path)
-                    builder.appendInlineContent(FILE_PILL_ID, segment.text.ifBlank { path })
+                    builder.appendInlineContent(filePillId(pills++), segment.text.ifBlank { path })
                     builder.pop()
                 } else {
                     builder.withStyle(SpanStyle(color = colors.accent)) { append(segment.text) }
@@ -372,19 +365,27 @@ private fun buildInlineContent(
     return builder.toAnnotatedString()
 }
 
-/** The inline-content slot every workspace-path pill is placed in. */
-private const val FILE_PILL_ID = "dsh.file-pill"
+/** The inline-content slot of the [index]th workspace-path pill in a paragraph. */
+private fun filePillId(index: Int) = "dsh.file-pill.$index"
+
+/** Folders go to Files when the host registered a folder opener; everything else to Preview. */
+private fun openWorkspaceReference(path: String, openFile: (String) -> Unit, openFolder: ((String) -> Unit)?) {
+    if (isFolderReference(path) && openFolder != null) openFolder(path) else openFile(path)
+}
 
 /** A workspace path drawn as a pill: file or folder icon, then the path, on a bordered block. */
 @Composable
 private fun FilePill(path: String, label: String, style: TextStyle) {
     val colors = DsTheme.colors
     val folder = isFolderReference(path)
+    val openFile = LocalFileOpener.current
+    val openFolder = LocalFolderOpener.current
     Row(
         Modifier
             .clip(DsShapes.pill)
             .background(colors.bgModulePlatform)
             .border(1.dp, colors.borderL3, DsShapes.pill)
+            .clickable(role = Role.Button) { openWorkspaceReference(path, openFile, openFolder) }
             .padding(horizontal = 8.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -400,6 +401,7 @@ private fun FilePill(path: String, label: String, style: TextStyle) {
             style = style.copy(fontFamily = DsType.codeFont, fontSize = style.fontSize * 0.9f, color = colors.labelPrimary),
             maxLines = 1,
             softWrap = false,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

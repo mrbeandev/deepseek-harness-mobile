@@ -86,9 +86,11 @@ class UpdateChecker @Inject constructor(
     suspend fun checkOnce(currentVersion: String) {
         val now = System.currentTimeMillis()
         if (now - lastAutoCheckAt < AUTO_CHECK_INTERVAL_MS) return
-        lastAutoCheckAt = now
         val settings = runCatching { hostsStore.settingsOnce() }.getOrNull() ?: return
         if (!settings.updateCheckEnabled) return
+        // Stamped only once a check really runs, so switching the check on is honoured at the
+        // next resume rather than up to six hours later.
+        lastAutoCheckAt = now
         check(currentVersion, ignoreDismissed = false)
     }
 

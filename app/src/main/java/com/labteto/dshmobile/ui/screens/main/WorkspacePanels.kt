@@ -90,9 +90,8 @@ internal fun WorkspacePanels(store: SessionStore, state: PanelState, onDismiss: 
 }
 
 /**
- * The workspace browser itself — Files / Preview / Terminal — without any surrounding chrome, so
- * it can live inline as the chat's Workspace tab or inside [WorkspacePanels] when a file mention
- * opens it over the chat.
+ * The workspace browser itself — Files / Preview / Terminal — without the screen's header, which
+ * [WorkspacePanels] draws around it.
  */
 @Composable
 internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier: Modifier = Modifier) {
@@ -106,16 +105,24 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
         scope.launch {
             try {
                 val api = store.apiForHost(key.host) ?: error(context.getString(R.string.common_offline))
-                state.listing = api.workspaceFileList(key.sessionId, path).requireValue()
-                state.directory = path
+                when (val result = api.workspaceFileList(key.sessionId, path)) {
+                    is RpcResult.Ok -> { state.listing = result.value; state.directory = path }
+                    // A reference guessed to be a folder (see isFolderReference) that names a
+                    // file: show the file, and leave Files on the folder that holds it.
+                    is RpcResult.Err -> if (result.error.code == "workspace-file/not-directory") {
+                        state.directory = path.substringBeforeLast('/', ".").ifEmpty { "." }
+                        state.listing = null
+                        state.open(path)
+                    } else result.requireValue()
+                }
             } catch (e: CancellationException) { throw e }
             catch (e: Exception) { state.error = e.message }
             finally { state.busy = false }
         }
     }
-    // Keyed on the directory too: `browse()` clears the listing and sets a new directory, and
-    // that must fetch even though the key is unchanged.
-    LaunchedEffect(key, state.directory) { if (state.listing == null) listDirectory(state.directory) }
+    // Keyed on the directory and on a missing listing too: `browse()` clears the listing and may
+    // set a new directory, and either must fetch even though the session is unchanged.
+    LaunchedEffect(key, state.directory, state.listing == null) { if (state.listing == null) listDirectory(state.directory) }
     // Invalidate previews when the host reports a file observation. OS-only changes are checked
     // by stat each time a tab opens and by the explicit Refresh action.
     //
@@ -159,9 +166,12 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
             catch (_: Exception) { /* As above: the feed is an optimisation, not a dependency. */ }
         }
     }
-    CompositionLocalProvider(com.labteto.dshmobile.ui.components.LocalFileOpener provides { path: String ->
-        state.open(activeDocument?.let { com.labteto.dshmobile.core.session.resolvePreviewReference(it, path) } ?: path)
-    }) {
+    // A link in a previewed document is relative to that document, folders as much as files.
+    fun resolve(path: String) = activeDocument?.let { com.labteto.dshmobile.core.session.resolvePreviewReference(it, path) } ?: path
+    CompositionLocalProvider(
+        com.labteto.dshmobile.ui.components.LocalFileOpener provides { path: String -> state.open(resolve(path)) },
+        com.labteto.dshmobile.ui.components.LocalFolderOpener provides { path: String -> state.browse(resolve(path)) },
+    ) {
             val colors = DsTheme.colors
             Column(modifier.padding(horizontal = DsSpacing.medium), verticalArrangement = Arrangement.spacedBy(DsSpacing.small)) {
                 DsSegmented(
@@ -217,7 +227,7 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
                         }
                         val entries = state.listing?.entries.orEmpty()
                             .sortedWith(compareBy({ it.type != "directory" }, { it.name.lowercase() }))
-                        if (!state.busy && entries.isEmpty() && state.error == null) {
+                        if (!state.busy && state.listing != null && entries.isEmpty() && state.error == null) {
                             Text(stringResource(R.string.panel_empty_folder), style = DsType.std14, color = colors.labelTertiary, modifier = Modifier.padding(DsSpacing.medium))
                         }
                         LazyColumn(
@@ -281,6 +291,10 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
                                 DocumentPreview(
                                     store, key, preview, Modifier.weight(1f),
                                     onClose = { state.previews.removeAt(index); state.selectedPreview = (index - 1).coerceAtLeast(0) },
+                                    onDirectory = {
+                                        state.previews.remove(preview); state.selectedPreview = (index - 1).coerceAtLeast(0)
+                                        state.browse(preview.path)
+                                    },
                                 )
                             }
                         }
@@ -292,7 +306,10 @@ internal fun WorkspacePanelBody(store: SessionStore, state: PanelState, modifier
 }
 
 @Composable
-private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewTab, modifier: Modifier, onClose: () -> Unit) {
+private fun DocumentPreview(
+    store: SessionStore, key: ComposerKey, tab: PreviewTab, modifier: Modifier,
+    onClose: () -> Unit, onDirectory: () -> Unit,
+) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val colors = DsTheme.colors
@@ -314,7 +331,13 @@ private fun DocumentPreview(store: SessionStore, key: ComposerKey, tab: PreviewT
         scope.launch {
             try {
                 val api = store.apiForHost(key.host) ?: error(context.getString(R.string.common_offline))
-                val stat = api.workspaceFileStat(key.sessionId, tab.path).requireValue()
+                val statResult = api.workspaceFileStat(key.sessionId, tab.path)
+                // A reference guessed to be a file that names a folder (`.github`): browse it.
+                if (statResult is RpcResult.Err && statResult.error.code == "workspace-file/not-regular-file" &&
+                    (statResult.error.details as? kotlinx.serialization.json.JsonObject)?.get("kind")
+                        ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content } == "directory"
+                ) { onDirectory(); return@launch }
+                val stat = statResult.requireValue()
                 val changed = stat.version != tab.stat?.version
                 if (changed) { tab.text = null; tab.bytes = null; tab.nextLine = 1; tab.eof = false }
                 tab.stat = stat
