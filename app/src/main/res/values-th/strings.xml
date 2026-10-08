@@ -558,4 +558,10 @@
     <string name="rewind_confirm">ยืนยันการย้อนกลับ</string>
     <string name="command_popup_no_matches">ไม่พบรายการที่ตรงกัน</string>
     <string name="archived_count">เก็บถาวร %1$d รายการ</string>
+    <string name="details_section_activity">กิจกรรม</string>
+    <string name="details_section_host">โฮสต์</string>
+    <string name="details_preset_label">พรีเซ็ต</string>
+    <string name="details_copy_link">คัดลอกลิงก์</string>
+    <string name="chat_model_label">โมเดล</string>
+    <string name="panel_empty_folder">โฟลเดอร์นี้ว่างเปล่า</string>
 </resources>

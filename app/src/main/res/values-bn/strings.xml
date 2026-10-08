@@ -558,4 +558,10 @@
     <string name="rewind_confirm">রিওয়াইন্ড নিশ্চিত করুন</string>
     <string name="command_popup_no_matches">কোনো মিল নেই</string>
     <string name="archived_count">%1$d আর্কাইভ করা</string>
+    <string name="details_section_activity">কার্যকলাপ</string>
+    <string name="details_section_host">হোস্ট</string>
+    <string name="details_preset_label">প্রিসেট</string>
+    <string name="details_copy_link">লিঙ্ক কপি করুন</string>
+    <string name="chat_model_label">মডেল</string>
+    <string name="panel_empty_folder">এই ফোল্ডারটি খালি</string>
 </resources>

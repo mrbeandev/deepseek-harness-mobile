@@ -123,12 +123,13 @@ internal fun ArchivedSessions(store: SessionStore) {
                             Text(it, style = DsType.small13, color = colors.labelSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         }
                         path?.takeIf { it != folder }?.let {
+                            // The whole path, wrapped: it is what tells two same-named
+                            // projects apart, so it is never cut short.
                             Text(
                                 technicalDisplay(it),
                                 style = DsType.caption11,
                                 color = colors.labelCaption,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
+                                softWrap = true,
                             )
                         }
                     }

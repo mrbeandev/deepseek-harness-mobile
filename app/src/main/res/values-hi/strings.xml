@@ -558,4 +558,10 @@
     <string name="rewind_confirm">रिवाइंड की पुष्टि करें</string>
     <string name="command_popup_no_matches">कोई मेल नहीं</string>
     <string name="archived_count">%1$d संग्रहीत</string>
+    <string name="details_section_activity">गतिविधि</string>
+    <string name="details_section_host">होस्ट</string>
+    <string name="details_preset_label">प्रीसेट</string>
+    <string name="details_copy_link">लिंक कॉपी करें</string>
+    <string name="chat_model_label">मॉडल</string>
+    <string name="panel_empty_folder">यह फ़ोल्डर खाली है</string>
 </resources>

@@ -558,4 +558,10 @@
     <string name="rewind_confirm">Confirmar rebobinado</string>
     <string name="command_popup_no_matches">Sin coincidencias</string>
     <string name="archived_count">%1$d archivadas</string>
+    <string name="details_section_activity">Actividad</string>
+    <string name="details_section_host">Host</string>
+    <string name="details_preset_label">Preajuste</string>
+    <string name="details_copy_link">Copiar enlace</string>
+    <string name="chat_model_label">Modelo</string>
+    <string name="panel_empty_folder">Esta carpeta está vacía</string>
 </resources>

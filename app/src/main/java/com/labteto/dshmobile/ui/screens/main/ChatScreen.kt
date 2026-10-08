@@ -438,6 +438,8 @@ fun ChatScreen(
                 onOpenSubagents = { sheet = ChatSheet.Subagents },
                 onOpenDetails = onOpenDetails,
                 onTabChange = { tab = it },
+                onOpenWorkspace = { panelKey = composer.key },
+                workspaceEnabled = currentSessionId != null,
             )
 
             connectionError?.let {
@@ -498,21 +500,9 @@ fun ChatScreen(
                             cwd = currentSession?.cwd,
                             listState = trajectoryListState,
                         )
-                        // The workspace browser as a tab rather than a button-launched dialog, so it
-                        // sits beside the transcript it refers to. A file mention tapped in the chat
-                        // still opens the dialog form over the chat (see `panelKey`).
-                        ChatTab.Workspace -> if (currentSessionId != null) {
-                            WorkspacePanelBody(store, store.panels.get(composer.key), Modifier.fillMaxSize())
-                        } else {
-                            Box(Modifier.fillMaxSize())
-                        }
                     }
                 }
 
-                // The Workspace tab is a file browser and a terminal, not a conversation: the
-                // composer, docks and stats footer would only take height from it. They come
-                // back the moment the reader returns to Chat or Trajectory.
-                if (tab != ChatTab.Workspace) {
                 conversation?.let { conv ->
                     Column(
                         modifier = Modifier
@@ -673,7 +663,6 @@ fun ChatScreen(
                 )
 
                 StatsFooter(stats = sessionStats, usage = tokenUsage)
-                }
                 }
             }
         }

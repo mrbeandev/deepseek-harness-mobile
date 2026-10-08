@@ -558,4 +558,10 @@
     <string name="rewind_confirm">确认回退</string>
     <string name="command_popup_no_matches">没有匹配项</string>
     <string name="archived_count">已归档 %1$d 个</string>
+    <string name="details_section_activity">活动</string>
+    <string name="details_section_host">主机</string>
+    <string name="details_preset_label">预设</string>
+    <string name="details_copy_link">复制链接</string>
+    <string name="chat_model_label">模型</string>
+    <string name="panel_empty_folder">此文件夹为空</string>
 </resources>

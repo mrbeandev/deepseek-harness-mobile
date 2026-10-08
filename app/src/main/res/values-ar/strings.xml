@@ -558,4 +558,10 @@
     <string name="rewind_confirm">تأكيد الإعادة</string>
     <string name="command_popup_no_matches">لا توجد نتائج مطابقة</string>
     <string name="archived_count">%1$d مؤرشفة</string>
+    <string name="details_section_activity">النشاط</string>
+    <string name="details_section_host">المضيف</string>
+    <string name="details_preset_label">الإعداد المسبق</string>
+    <string name="details_copy_link">نسخ الرابط</string>
+    <string name="chat_model_label">النموذج</string>
+    <string name="panel_empty_folder">هذا المجلد فارغ</string>
 </resources>

@@ -558,4 +558,10 @@
     <string name="rewind_confirm">Confirmar retrocesso</string>
     <string name="command_popup_no_matches">Nenhuma correspondência</string>
     <string name="archived_count">%1$d arquivadas</string>
+    <string name="details_section_activity">Atividade</string>
+    <string name="details_section_host">Host</string>
+    <string name="details_preset_label">Predefinição</string>
+    <string name="details_copy_link">Copiar link</string>
+    <string name="chat_model_label">Modelo</string>
+    <string name="panel_empty_folder">Esta pasta está vazia</string>
 </resources>

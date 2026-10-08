@@ -558,4 +558,10 @@
     <string name="rewind_confirm">Подтвердить откат</string>
     <string name="command_popup_no_matches">Нет совпадений</string>
     <string name="archived_count">В архиве: %1$d</string>
+    <string name="details_section_activity">Активность</string>
+    <string name="details_section_host">Хост</string>
+    <string name="details_preset_label">Пресет</string>
+    <string name="details_copy_link">Копировать ссылку</string>
+    <string name="chat_model_label">Модель</string>
+    <string name="panel_empty_folder">Эта папка пуста</string>
 </resources>

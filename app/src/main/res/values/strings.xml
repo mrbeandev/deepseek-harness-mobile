@@ -560,4 +560,10 @@
     <string name="rewind_confirm">Confirm rewind</string>
     <string name="command_popup_no_matches">No matches</string>
     <string name="archived_count">%1$d archived</string>
+    <string name="details_section_activity">Activity</string>
+    <string name="details_section_host">Host</string>
+    <string name="details_preset_label">Preset</string>
+    <string name="details_copy_link">Copy link</string>
+    <string name="chat_model_label">Model</string>
+    <string name="panel_empty_folder">This folder is empty</string>
 </resources>

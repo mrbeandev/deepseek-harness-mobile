@@ -558,4 +558,10 @@
     <string name="rewind_confirm">Confirmer le rembobinage</string>
     <string name="command_popup_no_matches">Aucun résultat</string>
     <string name="archived_count">%1$d archivées</string>
+    <string name="details_section_activity">Activité</string>
+    <string name="details_section_host">Hôte</string>
+    <string name="details_preset_label">Préréglage</string>
+    <string name="details_copy_link">Copier le lien</string>
+    <string name="chat_model_label">Modèle</string>
+    <string name="panel_empty_folder">Ce dossier est vide</string>
 </resources>
