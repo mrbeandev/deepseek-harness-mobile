@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">%1$s हटाएं</string>
     <string name="rewind_confirm">रिवाइंड की पुष्टि करें</string>
     <string name="command_popup_no_matches">कोई मेल नहीं</string>
+    <string name="archived_count">%1$d संग्रहीत</string>
+    <string name="details_section_activity">गतिविधि</string>
+    <string name="details_section_host">होस्ट</string>
+    <string name="details_preset_label">प्रीसेट</string>
+    <string name="details_copy_link">लिंक कॉपी करें</string>
+    <string name="chat_model_label">मॉडल</string>
+    <string name="panel_empty_folder">यह फ़ोल्डर खाली है</string>
+    <string name="panel_preview_hint">यहाँ खोलने के लिए फ़ाइलें टैब में किसी फ़ाइल पर टैप करें</string>
+    <string name="panel_open_host_failed">harness इस फ़ाइल को अपने कंप्यूटर पर नहीं खोल सका — वहाँ शायद कोई डेस्कटॉप सत्र नहीं है।</string>
+    <string name="settings_update_check_now">अभी जाँचें</string>
+    <string name="settings_update_up_to_date">आपके पास नवीनतम संस्करण है।</string>
+    <string name="settings_update_unreachable">GitHub से संपर्क नहीं हो सका।</string>
 </resources>

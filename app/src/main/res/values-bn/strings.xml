@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">%1$s মুছুন</string>
     <string name="rewind_confirm">রিওয়াইন্ড নিশ্চিত করুন</string>
     <string name="command_popup_no_matches">কোনো মিল নেই</string>
+    <string name="archived_count">%1$d আর্কাইভ করা</string>
+    <string name="details_section_activity">কার্যকলাপ</string>
+    <string name="details_section_host">হোস্ট</string>
+    <string name="details_preset_label">প্রিসেট</string>
+    <string name="details_copy_link">লিঙ্ক কপি করুন</string>
+    <string name="chat_model_label">মডেল</string>
+    <string name="panel_empty_folder">এই ফোল্ডারটি খালি</string>
+    <string name="panel_preview_hint">এখানে খুলতে ফাইলস ট্যাবে একটি ফাইলে ট্যাপ করুন</string>
+    <string name="panel_open_host_failed">harness তার কম্পিউটারে এই ফাইলটি খুলতে পারেনি — সেখানে হয়তো কোনো ডেস্কটপ সেশন নেই।</string>
+    <string name="settings_update_check_now">এখনই পরীক্ষা করুন</string>
+    <string name="settings_update_up_to_date">আপনার কাছে সর্বশেষ সংস্করণ আছে।</string>
+    <string name="settings_update_unreachable">GitHub-এ পৌঁছানো যায়নি।</string>
 </resources>

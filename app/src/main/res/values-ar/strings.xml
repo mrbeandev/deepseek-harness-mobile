@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">حذف %1$s</string>
     <string name="rewind_confirm">تأكيد الإعادة</string>
     <string name="command_popup_no_matches">لا توجد نتائج مطابقة</string>
+    <string name="archived_count">%1$d مؤرشفة</string>
+    <string name="details_section_activity">النشاط</string>
+    <string name="details_section_host">المضيف</string>
+    <string name="details_preset_label">الإعداد المسبق</string>
+    <string name="details_copy_link">نسخ الرابط</string>
+    <string name="chat_model_label">النموذج</string>
+    <string name="panel_empty_folder">هذا المجلد فارغ</string>
+    <string name="panel_preview_hint">انقر على ملف في الملفات لفتحه هنا</string>
+    <string name="panel_open_host_failed">تعذر على harness فتح هذا الملف على جهازه — قد لا توجد جلسة سطح مكتب هناك.</string>
+    <string name="settings_update_check_now">تحقق الآن</string>
+    <string name="settings_update_up_to_date">لديك أحدث إصدار.</string>
+    <string name="settings_update_unreachable">تعذر الوصول إلى GitHub.</string>
 </resources>

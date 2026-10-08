@@ -12,7 +12,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.rememberCoroutineScope
+import com.labteto.dshmobile.ui.components.DsButtonSize
+import com.labteto.dshmobile.ui.components.FeatherIcons
+import com.labteto.dshmobile.update.UpdateChecker
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.semantics.Role
+import com.labteto.dshmobile.ui.components.DsSegment
+import com.labteto.dshmobile.ui.components.DsSegmented
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
@@ -97,6 +106,10 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
     val toast = rememberDsToast()
     var showDisconnectDialog by remember { mutableStateOf(false) }
     var pluginsOpen by remember { mutableStateOf(false) }
+    // Settings and the archive are two different jobs: one is configuration, the other is a list to
+    // search and restore from. A tab each keeps the settings reachable without scrolling past a
+    // list that can be long, and the archive gets the whole height to be scrolled in.
+    var page by rememberSaveable { mutableStateOf(PAGE_SETTINGS) }
     BackHandler(onBack = onClose)
 
     val hostsCleared = stringResource(R.string.settings_forget_hosts_done)
@@ -112,7 +125,6 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                 modifier = Modifier
                     .fillMaxSize()
                     .safeDrawingPadding()
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = DsSpacing.comfortable, vertical = DsSpacing.medium),
                 verticalArrangement = Arrangement.spacedBy(DsSpacing.comfortable),
             ) {
@@ -128,10 +140,27 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                         color = colors.labelPrimary,
                     )
                 }
+                DsSegmented(
+                    segments = listOf(
+                        DsSegment(PAGE_SETTINGS, stringResource(R.string.settings_title)),
+                        DsSegment(PAGE_ARCHIVED, stringResource(R.string.chatlist_archived)),
+                    ),
+                    selectedKey = page,
+                    onSelect = { page = it },
+                    role = Role.Tab,
+                )
 
-                SettingsCard(stringResource(R.string.archived_title)) {
-                    com.labteto.dshmobile.ui.screens.main.ArchivedSessions(store)
-                }
+                if (page == PAGE_ARCHIVED) {
+                    Column(
+                        Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(DsSpacing.small),
+                    ) {
+                        com.labteto.dshmobile.ui.screens.main.ArchivedSessions(store)
+                    }
+                } else Column(
+                    modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(DsSpacing.comfortable),
+                ) {
 
                 SettingsCard(stringResource(R.string.settings_general)) {
                     LanguageRow(settings) { tag -> viewModel.set { it.copy(localeOverride = tag) } }
@@ -224,13 +253,6 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                 }
 
                 SettingsCard(stringResource(R.string.settings_about)) {
-                    // Beside the version, because that is what it is about — and off-switchable,
-                    // since it is the one request this app makes to anything but the harness.
-                    ToggleRow(
-                        stringResource(R.string.settings_update_check),
-                        settings.updateCheckEnabled,
-                        stringResource(R.string.settings_update_check_hint),
-                    ) { viewModel.set { it.copy(updateCheckEnabled = !it.updateCheckEnabled) } }
                     Text(
                         stringResource(
                             R.string.settings_about_version,
@@ -240,9 +262,54 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                         style = DsType.small13,
                         color = colors.labelTertiary,
                     )
+                    // Beside the version, because that is what it is about — and off-switchable,
+                    // since it is the one request this app makes to anything but the harness.
+                    ToggleRow(
+                        stringResource(R.string.settings_update_check),
+                        settings.updateCheckEnabled,
+                        stringResource(R.string.settings_update_check_hint),
+                    ) { viewModel.set { it.copy(updateCheckEnabled = !it.updateCheckEnabled) } }
+                    // The same check, on demand. Every outcome is reported: a button that says
+                    // nothing when there is nothing to offer looks broken.
+                    var checking by remember { mutableStateOf(false) }
+                    var checkResult by remember { mutableStateOf<UpdateChecker.CheckOutcome?>(null) }
+                    val scope = rememberCoroutineScope()
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(DsSpacing.small)) {
+                        DsButton(
+                            text = stringResource(if (checking) R.string.common_loading else R.string.settings_update_check_now),
+                            icon = FeatherIcons.RefreshCw,
+                            onClick = {
+                                checking = true
+                                scope.launch {
+                                    try { checkResult = viewModel.checkForUpdateNow(BuildConfig.VERSION_NAME) } finally { checking = false }
+                                }
+                            },
+                            enabled = !checking,
+                            variant = DsButtonVariant.Outline,
+                            size = DsButtonSize.Small,
+                        )
+                        // A newer version is offered by the app's own update dialog, which the
+                        // checker raises; only the two outcomes that dialog cannot show are said here.
+                        when (val outcome = checkResult) {
+                            is UpdateChecker.CheckOutcome.UpToDate -> Text(
+                                stringResource(R.string.settings_update_up_to_date),
+                                style = DsType.small13,
+                                color = colors.labelTertiary,
+                                modifier = Modifier.weight(1f),
+                            )
+                            UpdateChecker.CheckOutcome.Unreachable -> Text(
+                                stringResource(R.string.settings_update_unreachable),
+                                style = DsType.small13,
+                                color = colors.warnLabel,
+                                modifier = Modifier.weight(1f),
+                            )
+                            is UpdateChecker.CheckOutcome.Available, is UpdateChecker.CheckOutcome.Dismissed, null -> Unit
+                        }
+                    }
                 }
 
                 Spacer(Modifier.height(DsSpacing.xlarge))
+                }
             }
             DsToastHost(toast, modifier = Modifier.fillMaxWidth())
         }
@@ -645,3 +712,6 @@ private fun AppearanceChip(label: String, selected: Boolean, onClick: () -> Unit
         )
     }
 }
+
+private const val PAGE_SETTINGS = "settings"
+private const val PAGE_ARCHIVED = "archived"

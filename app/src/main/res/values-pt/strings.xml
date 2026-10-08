@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">Excluir %1$s</string>
     <string name="rewind_confirm">Confirmar retrocesso</string>
     <string name="command_popup_no_matches">Nenhuma correspondência</string>
+    <string name="archived_count">%1$d arquivadas</string>
+    <string name="details_section_activity">Atividade</string>
+    <string name="details_section_host">Host</string>
+    <string name="details_preset_label">Predefinição</string>
+    <string name="details_copy_link">Copiar link</string>
+    <string name="chat_model_label">Modelo</string>
+    <string name="panel_empty_folder">Esta pasta está vazia</string>
+    <string name="panel_preview_hint">Toque em um arquivo em Arquivos para abri-lo aqui</string>
+    <string name="panel_open_host_failed">O harness não conseguiu abrir este arquivo no computador dele — talvez não haja uma sessão de desktop lá.</string>
+    <string name="settings_update_check_now">Verificar agora</string>
+    <string name="settings_update_up_to_date">Você tem a versão mais recente.</string>
+    <string name="settings_update_unreachable">Não foi possível acessar o GitHub.</string>
 </resources>

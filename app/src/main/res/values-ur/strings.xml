@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">%1$s حذف کریں</string>
     <string name="rewind_confirm">ریوائنڈ کی تصدیق کریں</string>
     <string name="command_popup_no_matches">کوئی مماثلت نہیں</string>
+    <string name="archived_count">%1$d محفوظ شدہ</string>
+    <string name="details_section_activity">سرگرمی</string>
+    <string name="details_section_host">ہوسٹ</string>
+    <string name="details_preset_label">پری سیٹ</string>
+    <string name="details_copy_link">لنک کاپی کریں</string>
+    <string name="chat_model_label">ماڈل</string>
+    <string name="panel_empty_folder">یہ فولڈر خالی ہے</string>
+    <string name="panel_preview_hint">یہاں کھولنے کے لیے فائلز میں کسی فائل پر ٹیپ کریں</string>
+    <string name="panel_open_host_failed">harness اپنے کمپیوٹر پر یہ فائل نہیں کھول سکا — وہاں شاید کوئی ڈیسک ٹاپ سیشن نہیں ہے۔</string>
+    <string name="settings_update_check_now">ابھی چیک کریں</string>
+    <string name="settings_update_up_to_date">آپ کے پاس تازہ ترین ورژن ہے۔</string>
+    <string name="settings_update_unreachable">GitHub تک رسائی نہیں ہو سکی۔</string>
 </resources>

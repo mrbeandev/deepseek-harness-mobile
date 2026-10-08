@@ -557,4 +557,16 @@
     <string name="rewind_impact_delete">Eliminar %1$s</string>
     <string name="rewind_confirm">Confirmar rebobinado</string>
     <string name="command_popup_no_matches">Sin coincidencias</string>
+    <string name="archived_count">%1$d archivadas</string>
+    <string name="details_section_activity">Actividad</string>
+    <string name="details_section_host">Host</string>
+    <string name="details_preset_label">Preajuste</string>
+    <string name="details_copy_link">Copiar enlace</string>
+    <string name="chat_model_label">Modelo</string>
+    <string name="panel_empty_folder">Esta carpeta está vacía</string>
+    <string name="panel_preview_hint">Toca un archivo en Archivos para abrirlo aquí</string>
+    <string name="panel_open_host_failed">El harness no pudo abrir este archivo en su equipo; puede que no haya una sesión de escritorio allí.</string>
+    <string name="settings_update_check_now">Comprobar ahora</string>
+    <string name="settings_update_up_to_date">Tienes la última versión.</string>
+    <string name="settings_update_unreachable">No se pudo conectar con GitHub.</string>
 </resources>
