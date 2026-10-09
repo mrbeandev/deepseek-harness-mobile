@@ -435,10 +435,13 @@ private fun ThisPhoneCard(
     LaunchedEffect(state.loopbackPort) {
         if (portText.toIntOrNull() != state.loopbackPort) portText = state.loopbackPort.toString()
     }
+    var pendingStop by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
-        onPermissionResult,
-    )
+    ) { granted ->
+        if (pendingStop && granted) onStop() else onPermissionResult(granted)
+        pendingStop = false
+    }
     // A finished start says its piece and steps aside; nothing is waiting on a tap.
     LaunchedEffect(control) {
         if (control is HarnessControl.Started) {
@@ -536,7 +539,10 @@ private fun ThisPhoneCard(
                     LoopbackStatus.Unknown -> Unit
                     else -> DsButton(
                         text = stringResource(R.string.connect_loopback_stop),
-                        onClick = onStop,
+                        onClick = {
+                            if (state.termuxPermission) onStop()
+                            else { pendingStop = true; permissionLauncher.launch(TermuxPaths.PERMISSION) }
+                        },
                         enabled = !busy,
                         variant = DsButtonVariant.Outline,
                         size = DsButtonSize.Small,

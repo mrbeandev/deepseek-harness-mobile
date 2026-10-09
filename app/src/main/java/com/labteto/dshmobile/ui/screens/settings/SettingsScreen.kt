@@ -198,9 +198,14 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                     val loopback by viewModel.loopback.collectAsStateWithLifecycle()
                     val loopbackPort by viewModel.loopbackPort.collectAsStateWithLifecycle()
                     val context = LocalContext.current
+                    var pendingStop by remember { mutableStateOf(false) }
                     val permissionLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestPermission(),
-                    ) { granted -> if (granted) viewModel.startHarness() }
+                    ) { granted ->
+                        if (granted) {
+                            if (pendingStop) viewModel.stopHarness() else viewModel.startHarness()
+                        }
+                    }
                     LaunchedEffect(Unit) { viewModel.refreshLoopback() }
                     TermuxCard(
                         settings = settings,
@@ -211,10 +216,17 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                             if (viewModel.hasTermuxPermission()) {
                                 viewModel.startHarness()
                             } else {
+                                pendingStop = false
                                 permissionLauncher.launch(TermuxPaths.PERMISSION)
                             }
                         },
-                        onStop = viewModel::stopHarness,
+                        onStop = {
+                            if (viewModel.hasTermuxPermission()) viewModel.stopHarness()
+                            else {
+                                pendingStop = true
+                                permissionLauncher.launch(TermuxPaths.PERMISSION)
+                            }
+                        },
                         onOpenTermux = {
                             viewModel.openTermuxIntent()?.let { intent -> runCatching { context.startActivity(intent) } }
                         },

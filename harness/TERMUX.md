@@ -18,11 +18,25 @@ Everything below is run **in Termux**.
 
 ## Install
 
-1. Install Termux from [F-Droid](https://f-droid.org/packages/com.termux/) or from
-   [GitHub releases](https://github.com/termux/termux-app/releases). Not the Play Store
-   build: it is years out of date and cannot run current Node. Termux 0.118 or newer.
+1. **Install Termux from [F-Droid](https://f-droid.org/packages/com.termux/), not Google Play.**
+   The Google Play build tested here (`googleplay.2026.06.21`) does not expose
+   `com.termux.permission.RUN_COMMAND`, which DSH Mobile needs for Start/Stop and automatic
+   sign-in. This is an integration incompatibility, not simply an outdated Node version.
+   Use Termux 0.118 or newer. Official
+   [GitHub releases](https://github.com/termux/termux-app/releases) are a supported alternative
+   (v0.118.3 was used for the device validation); F-Droid is the recommended user path.
+   Switching between differently signed Termux builds requires backing up your Termux files
+   before uninstalling the existing app. Do not mix Termux add-ons from different sources.
 
-2. Node.js 22.19 or newer, then the harness CLI:
+2. **Runtime compatibility warning:** installing Node is not sufficient on every Android device.
+   In the current device test, native Termux installation failed compiling `koffi` against
+   Android's Bionic headers even after installing Python, CMake, Clang and Make. Debian via
+   `proot-distro` with Linux Node 24.12.0 worked; it requires an explicit launcher wrapper.
+   See [the validation report](../docs/TERMUX-DEVICE-VALIDATION.md) before treating native
+   installation as a supported one-command setup. The commands below describe the native path,
+   not a guarantee that its dependencies support your device.
+
+   Node.js 22.19 or newer, then the harness CLI:
 
    ```sh
    pkg update && pkg install nodejs

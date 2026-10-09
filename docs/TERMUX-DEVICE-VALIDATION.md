@@ -45,6 +45,11 @@ phone workspace `/root/dsh-mobile-test-workspace`. No real user project was used
 - An authenticated `session/create` succeeded for the throwaway workspace.
 - Stop from Settings removed the managed PID file and closed the listening service.
 - Restart from Settings created a new PID and produced a fresh readiness line.
+- After unlocking, Settings still showed Connected and “Harness started and signed in”.
+- Revoking the command permission exposed a bug: Stop bypassed the permission launcher.
+  Both connect/settings Stop controls were fixed to request permission and resume Stop,
+  not Start. The actual system “execute arbitrary commands within Termux” dialog was
+  captured, Allow was tapped, and the PID disappeared; the UI settled to Not running.
 - After readiness, six probes over a full minute with the screen off each returned
   401 (server alive and enforcing authentication). Android power state showed
   `PARTIAL_WAKE_LOCK 'termux:service-wakelock'` held by Termux.
@@ -54,8 +59,7 @@ on the initial port. Repeat checks will cover subsequent device-discovered fixes
 
 ## Not yet established
 
-- Normal user-facing runtime permission prompt (ADB grant used here).
-- Post-restart app state after unlocking (device was at secure lock screen).
+- Long-duration permission/restart cycles beyond the checks described below.
 - Overnight survival, Doze, vendor process killer behavior, or reboot autostart.
 - Model/tool execution: no model credentials were installed into the phone harness.
 - Release APK installer/download/checksum flow: a debug APK cannot be replaced by
