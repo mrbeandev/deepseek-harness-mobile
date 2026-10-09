@@ -11,9 +11,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.labteto.dshmobile.core.session.*
 import com.labteto.dshmobile.ui.components.FeatherIcons
+import com.labteto.dshmobile.ui.components.formatDurationMs
 import com.labteto.dshmobile.ui.theme.DsShapes
 import com.labteto.dshmobile.ui.theme.DsTheme
 import com.labteto.dshmobile.ui.theme.DsType
@@ -60,14 +62,14 @@ internal fun ToolGroupRow(calls: List<ToolCallNode>, context: ChatNodeContext) {
     val elapsed = if (starts.isNotEmpty() && ends.isNotEmpty()) (ends.max() - starts.min()).coerceAtLeast(0) else null
     Column(Modifier.fillMaxWidth().clip(DsShapes.block).background(colors.bgLayer1)
         .border(1.dp, colors.borderL2, DsShapes.block)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable { expanded = !expanded }
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable(role = Role.Button) { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(FeatherIcons.Tool, null, Modifier.size(14.dp), tint = colors.labelTertiary)
             Text(stringResource(R.string.chat_tool_group_count, calls.size), style = DsType.small13, color = colors.labelSecondary)
             if (failed > 0) Text(stringResource(R.string.chat_tool_group_failed, failed), style = DsType.caption11, color = colors.error)
             Spacer(Modifier.weight(1f))
-            Text(if (running) stringResource(R.string.jobs_running) else elapsed?.let { "$it ms" }.orEmpty(),
+            Text(if (running) stringResource(R.string.jobs_running) else elapsed?.let(::formatDurationMs).orEmpty(),
                 style = DsType.caption11, color = if (running) colors.accent else colors.labelCaption)
             Icon(FeatherIcons.ChevronRight, null, Modifier.size(14.dp).graphicsLayer { rotationZ = if (expanded) 90f else 0f }, tint = colors.labelTertiary)
         }
@@ -83,11 +85,11 @@ internal fun ContextGroupRow(nodes: List<ChatNode>, context: ChatNodeContext) {
     val colors = DsTheme.colors
     Column(Modifier.fillMaxWidth().clip(DsShapes.block).background(colors.bgLayer1)
         .border(1.dp, colors.borderL2, DsShapes.block)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable { expanded = !expanded }
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable(role = Role.Button) { expanded = !expanded }
             .padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
             Icon(FeatherIcons.Layers, null, Modifier.size(14.dp), tint = colors.labelCaption)
             Spacer(Modifier.width(8.dp))
-            Text(stringResource(R.string.system_prompt) + " · " + nodes.size, style = DsType.small13, color = colors.labelTertiary)
+            Text(stringResource(R.string.chat_context_title) + " · " + nodes.size, style = DsType.small13, color = colors.labelTertiary)
             Spacer(Modifier.weight(1f))
             Icon(FeatherIcons.ChevronRight, null, Modifier.size(14.dp).graphicsLayer { rotationZ = if (expanded) 90f else 0f }, tint = colors.labelCaption)
         }

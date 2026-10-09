@@ -14,6 +14,15 @@ class ToolGroupsTest {
         assertEquals(listOf(2L, 3L), (rows[1] as TranscriptRow.Tools).calls.map { it.seq })
         assertEquals(listOf(5L), (rows[3] as TranscriptRow.Tools).calls.map { it.seq })
     }
+    @Test fun `injected context groups apart from tools and the rewind marker stays a message`() {
+        val skill = UserMessageNode(2, "s", listOf(ChatBlock("text", "skill body")), "skill-invocation")
+        val system = OtherNode(3, "system/message", kotlinx.serialization.json.JsonNull)
+        val marker = UserMessageNode(5, "r", emptyList(), REWIND_SOURCE_KIND)
+        val rows = groupToolRows(listOf(user(1), skill, system, call(4), marker))
+        assertEquals(listOf(2L, 3L), (rows[1] as TranscriptRow.Context).nodes.map { it.seq })
+        assertEquals(listOf(4L), (rows[2] as TranscriptRow.Tools).calls.map { it.seq })
+        assertTrue(rows[3] is TranscriptRow.Message)
+    }
     @Test fun `group key remains first call as stream grows`() {
         assertEquals(groupToolRows(listOf(call(1))).first().seq, groupToolRows(listOf(call(1), call(2))).first().seq)
         assertTrue(groupToolRows(emptyList()).isEmpty())

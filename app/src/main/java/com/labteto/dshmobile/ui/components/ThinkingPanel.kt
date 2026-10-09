@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.labteto.dshmobile.R
 import com.labteto.dshmobile.ui.theme.DsShapes
@@ -27,7 +28,7 @@ fun ThinkingPanel(text: String, streaming: Boolean, expanded: Boolean, onToggle:
     val colors = DsTheme.colors
     Column(Modifier.fillMaxWidth().clip(DsShapes.block).background(colors.bgLayer1)
         .border(1.dp, colors.borderL2, DsShapes.block)) {
-        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable(onClick = onToggle)
+        Row(Modifier.fillMaxWidth().heightIn(min = 36.dp).clickable(role = Role.Button, onClick = onToggle)
             .padding(horizontal = 10.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Icon(FeatherIcons.Layers, null, Modifier.size(14.dp), tint = colors.labelCaption)

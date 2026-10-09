@@ -37,6 +37,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ import com.labteto.dshmobile.ui.components.FeatherIcons
 import com.labteto.dshmobile.ui.components.MarkdownText
 import com.labteto.dshmobile.ui.components.StateDot
 import com.labteto.dshmobile.ui.components.StateDotState
-import com.labteto.dshmobile.ui.components.ThinkingRow
+import com.labteto.dshmobile.ui.components.ThinkingPanel
 import com.labteto.dshmobile.ui.components.ToolCard
 import com.labteto.dshmobile.ui.components.UserBubble
 import com.labteto.dshmobile.ui.theme.DsAnimations
@@ -320,7 +321,7 @@ private fun AssistantMessage(node: AssistantMessageNode, context: ChatNodeContex
                 "text" -> if (!block.text.isNullOrBlank()) MarkdownText(block.text.orEmpty())
                 "reasoning" -> if (!block.text.isNullOrBlank() || streaming) {
                     val expanded = reasoningExpanded[index] ?: false
-                    com.labteto.dshmobile.ui.components.ThinkingPanel(
+                    ThinkingPanel(
                         text = block.text.orEmpty(),
                         expanded = expanded,
                         onToggle = { reasoningExpanded[index] = !expanded },
@@ -442,10 +443,10 @@ internal fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext, compact: 
     }
     val startedAt = context.eventTimes[node.seq]
     val endedAt = result?.let { context.eventTimes[it.seq] }
-    if (!compact && expanded && startedAt != null && endedAt != null) Text(
-        "${(endedAt - startedAt).coerceAtLeast(0)} ms",
-        style = DsType.caption11, color = colors.labelCaption,
-    )
+    val elapsed = if (startedAt != null && endedAt != null) {
+        com.labteto.dshmobile.ui.components.formatDurationMs((endedAt - startedAt).coerceAtLeast(0))
+    } else null
+    if (!compact && elapsed != null) Text(elapsed, style = DsType.caption11, color = colors.labelCaption)
     ToolCard(
         view = card,
         expanded = expanded,
@@ -455,14 +456,13 @@ internal fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext, compact: 
         iconOverride = row.variant.featherIcon(),
         state = state,
         header = if (compact) ({
-            Row(Modifier.fillMaxWidth().heightIn(min = 32.dp).clickable { expanded = !expanded }.padding(vertical = 4.dp),
+            Row(Modifier.fillMaxWidth().heightIn(min = 32.dp).clickable(role = Role.Button) { expanded = !expanded }.padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 Icon(if (node.name == "read_image") FeatherIcons.Image else row.variant.featherIcon(), null, Modifier.size(14.dp), tint = colors.labelTertiary)
                 Text(row.title, style = DsType.small13, color = colors.labelSecondary)
                 Text(row.summary.orEmpty(), Modifier.weight(1f), style = DsType.caption11,
                     color = colors.labelCaption, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                if (expanded && startedAt != null && endedAt != null) Text(
-                    "${(endedAt - startedAt).coerceAtLeast(0)} ms", style = DsType.caption11, color = colors.labelCaption)
+                if (expanded && elapsed != null) Text(elapsed, style = DsType.caption11, color = colors.labelCaption)
                 Text(when (state) { DisclosureState.Error -> "!"; DisclosureState.Running -> "…"; else -> "✓" },
                     style = DsType.caption11, color = if (state == DisclosureState.Error) colors.error else colors.labelTertiary)
                 Icon(FeatherIcons.ChevronRight, null, Modifier.size(14.dp).graphicsLayer { rotationZ = if (expanded) 90f else 0f }, tint = colors.labelTertiary)
@@ -470,8 +470,16 @@ internal fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext, compact: 
         }) else null,
     )
     if (expanded) {
-        com.labteto.dshmobile.ui.components.readImagePath(node.name, node.arguments)?.let { path ->
-            if (result != null && !result.isError) com.labteto.dshmobile.ui.components.ReadImagePreview(path)
+        // What the call returned, not the file as it is now: the durable attachment survives the
+        // file changing or being deleted, and shares the transcript's decoded-image cache.
+        val images = remember(result?.content) { toolResultImages(result?.content) }
+        images.forEach { ref ->
+            AttachmentImage(
+                attachmentId = ref.attachmentId,
+                intrinsicWidth = ref.width,
+                intrinsicHeight = ref.height,
+                contentDescription = ref.name,
+            )
         }
         result?.content?.let { JsonDisclosure(stringResource(R.string.chat_output_placeholder), it) }
         result?.meta?.let { JsonDisclosure(node.name, it) }

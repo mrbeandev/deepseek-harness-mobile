@@ -95,7 +95,8 @@ internal fun ChatNode.rendersContent(
             "tool-call" -> showsToolPreview(block, running, knownToolCallIds)
             "tool-result" -> false
             "text" -> !block.text.isNullOrBlank()
-            "reasoning" -> !block.text.isNullOrBlank()
+            // A settled empty block is nothing; a live one is the Thinking row before its first token.
+            "reasoning" -> !block.text.isNullOrBlank() || (streaming && running && !interrupted)
             "image" -> true
             else -> block.text != null
         }
