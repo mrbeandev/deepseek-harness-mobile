@@ -571,4 +571,7 @@
     <string name="settings_update_check_now">Check now</string>
     <string name="settings_update_up_to_date">You have the latest version.</string>
     <string name="settings_update_unreachable">Could not reach GitHub.</string>
+    <string name="chat_read_image_unavailable">Image no longer available</string>
+    <string name="chat_tool_group_count">Tool calls: %1$d</string>
+    <string name="chat_tool_group_failed">%1$d failed</string>
 </resources>

@@ -569,4 +569,7 @@
     <string name="settings_update_check_now">Проверить сейчас</string>
     <string name="settings_update_up_to_date">У вас последняя версия.</string>
     <string name="settings_update_unreachable">Не удалось подключиться к GitHub.</string>
+    <string name="chat_read_image_unavailable">Изображение больше недоступно</string>
+    <string name="chat_tool_group_count">Вызовы: %1$d</string>
+    <string name="chat_tool_group_failed">Ошибок: %1$d</string>
 </resources>

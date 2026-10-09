@@ -8,6 +8,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -413,7 +415,7 @@ private fun ActionIcon(
 // ---------------------------------------------------------------------------
 
 @Composable
-private fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext) {
+internal fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext, compact: Boolean = false) {
     val colors = DsTheme.colors
     val result = context.nodes
         .filterIsInstance<ToolResultNode>()
@@ -444,8 +446,8 @@ private fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext) {
     }
     val startedAt = context.eventTimes[node.seq]
     val endedAt = result?.let { context.eventTimes[it.seq] }
-    if (startedAt != null && endedAt != null) Text(
-        com.labteto.dshmobile.ui.components.formatDurationMs((endedAt - startedAt).coerceAtLeast(0)),
+    if (!compact && expanded && startedAt != null && endedAt != null) Text(
+        "${(endedAt - startedAt).coerceAtLeast(0)} ms",
         style = DsType.caption11, color = colors.labelCaption,
     )
     ToolCard(
@@ -456,8 +458,25 @@ private fun ToolCallRow(node: ToolCallNode, context: ChatNodeContext) {
         summaryOverride = row.summary,
         iconOverride = row.variant.featherIcon(),
         state = state,
+        header = if (compact) ({
+            Row(Modifier.fillMaxWidth().heightIn(min = 32.dp).clickable { expanded = !expanded }.padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                Icon(if (node.name == "read_image") FeatherIcons.Image else row.variant.featherIcon(), null, Modifier.size(14.dp), tint = colors.labelTertiary)
+                Text(row.title, style = DsType.small13, color = colors.labelSecondary)
+                Text(row.summary.orEmpty(), Modifier.weight(1f), style = DsType.caption11,
+                    color = colors.labelCaption, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                if (expanded && startedAt != null && endedAt != null) Text(
+                    "${(endedAt - startedAt).coerceAtLeast(0)} ms", style = DsType.caption11, color = colors.labelCaption)
+                Text(when (state) { DisclosureState.Error -> "!"; DisclosureState.Running -> "…"; else -> "✓" },
+                    style = DsType.caption11, color = if (state == DisclosureState.Error) colors.error else colors.labelTertiary)
+                Icon(FeatherIcons.ChevronRight, null, Modifier.size(14.dp).graphicsLayer { rotationZ = if (expanded) 90f else 0f }, tint = colors.labelTertiary)
+            }
+        }) else null,
     )
     if (expanded) {
+        com.labteto.dshmobile.ui.components.readImagePath(node.name, node.arguments)?.let { path ->
+            if (result != null && !result.isError) com.labteto.dshmobile.ui.components.ReadImagePreview(path)
+        }
         result?.content?.let { JsonDisclosure(stringResource(R.string.chat_output_placeholder), it) }
         result?.meta?.let { JsonDisclosure(node.name, it) }
         PtcChildren(node.callId, context.nodes.filterIsInstance<OtherNode>())

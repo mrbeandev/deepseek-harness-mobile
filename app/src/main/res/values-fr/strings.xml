@@ -569,4 +569,7 @@
     <string name="settings_update_check_now">Vérifier maintenant</string>
     <string name="settings_update_up_to_date">Vous avez la dernière version.</string>
     <string name="settings_update_unreachable">Impossible de joindre GitHub.</string>
+    <string name="chat_read_image_unavailable">Image indisponible</string>
+    <string name="chat_tool_group_count">Outils : %1$d</string>
+    <string name="chat_tool_group_failed">%1$d échecs</string>
 </resources>

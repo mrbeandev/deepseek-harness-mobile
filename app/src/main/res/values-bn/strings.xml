@@ -569,4 +569,7 @@
     <string name="settings_update_check_now">এখনই পরীক্ষা করুন</string>
     <string name="settings_update_up_to_date">আপনার কাছে সর্বশেষ সংস্করণ আছে।</string>
     <string name="settings_update_unreachable">GitHub-এ পৌঁছানো যায়নি।</string>
+    <string name="chat_read_image_unavailable">ছবি আর উপলব্ধ নেই</string>
+    <string name="chat_tool_group_count">টুল কল: %1$d</string>
+    <string name="chat_tool_group_failed">%1$d ব্যর্থ</string>
 </resources>
