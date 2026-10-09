@@ -39,10 +39,10 @@ fun ThinkingPanel(text: String, streaming: Boolean, expanded: Boolean, onToggle:
         }
         if (expanded) {
             Box(Modifier.fillMaxWidth().heightIn(max = 240.dp).verticalScroll(rememberScrollState())
-                .padding(horizontal = 12.dp, vertical = 8.dp)) {
+                .padding(start = 12.dp, end = 12.dp, top = 4.dp, bottom = 4.dp)) {
                 // Selectable text rather than full-size reply markdown: this is reasoning, not the answer.
                 androidx.compose.foundation.text.selection.SelectionContainer {
-                    Text(text, style = DsType.small13, color = colors.labelTertiary, softWrap = true)
+                    Text(text.trimEnd(), style = DsType.small13, color = colors.labelTertiary, softWrap = true)
                 }
             }
         }

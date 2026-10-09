@@ -317,8 +317,8 @@ private fun AssistantMessage(node: AssistantMessageNode, context: ChatNodeContex
     ) {
         node.blocks.forEachIndexed { index, block ->
             when (block.kind) {
-                "text" -> MarkdownText(block.text.orEmpty())
-                "reasoning" -> {
+                "text" -> if (!block.text.isNullOrBlank()) MarkdownText(block.text.orEmpty())
+                "reasoning" -> if (!block.text.isNullOrBlank() || streaming) {
                     val expanded = reasoningExpanded[index] ?: false
                     com.labteto.dshmobile.ui.components.ThinkingPanel(
                         text = block.text.orEmpty(),
