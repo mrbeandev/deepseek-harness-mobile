@@ -65,7 +65,9 @@ object HarnessSession {
             .connectTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .readTimeout(timeoutMs, TimeUnit.MILLISECONDS)
             .build()
-        val url = resolveHarnessUrl(baseUrl, "/").newBuilder().addQueryParameter("token", token).build()
+        // Treat both forms of a root/proxy URL identically without changing stored endpoint keys.
+        val root = baseUrl.trim().trimEnd('/') + "/"
+        val url = resolveHarnessUrl(root, "/").newBuilder().addQueryParameter("token", token).build()
         val request = Request.Builder().url(url).get().build()
         try {
             exchanger.newCall(request).execute().use { response ->

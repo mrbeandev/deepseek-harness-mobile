@@ -505,4 +505,7 @@
     <string name="settings_update_check_now">Comprobar ahora</string>
     <string name="settings_update_up_to_date">Tienes la última versión.</string>
     <string name="settings_update_unreachable">No se pudo conectar con GitHub.</string>
+    <string name="chat_read_image_unavailable">Imagen ya no disponible</string>
+    <string name="chat_tool_group_count">Herramientas: %1$d</string>
+    <string name="chat_tool_group_failed">%1$d fallidas</string>
 </resources>

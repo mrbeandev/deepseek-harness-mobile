@@ -505,4 +505,7 @@
     <string name="settings_update_check_now">ตรวจสอบตอนนี้</string>
     <string name="settings_update_up_to_date">คุณมีเวอร์ชันล่าสุดแล้ว</string>
     <string name="settings_update_unreachable">ไม่สามารถเชื่อมต่อ GitHub ได้</string>
+    <string name="chat_read_image_unavailable">รูปภาพไม่พร้อมใช้งานแล้ว</string>
+    <string name="chat_tool_group_count">เรียกเครื่องมือ: %1$d</string>
+    <string name="chat_tool_group_failed">ล้มเหลว %1$d</string>
 </resources>
