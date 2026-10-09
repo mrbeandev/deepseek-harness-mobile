@@ -569,4 +569,7 @@
     <string name="settings_update_check_now">تحقق الآن</string>
     <string name="settings_update_up_to_date">لديك أحدث إصدار.</string>
     <string name="settings_update_unreachable">تعذر الوصول إلى GitHub.</string>
+    <string name="chat_tool_group_count">استدعاءات الأدوات: %1$d</string>
+    <string name="chat_tool_group_failed">%1$d فشلت</string>
+    <string name="chat_thought_process">عملية التفكير</string>
 </resources>
