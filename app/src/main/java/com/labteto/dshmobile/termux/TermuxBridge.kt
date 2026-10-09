@@ -35,10 +35,15 @@ class TermuxBridge @Inject constructor(
     private val pending = ConcurrentHashMap<String, CompletableDeferred<TermuxResult>>()
     private val nextRequestCode = AtomicInteger(0x5A00)
 
-    /** Whether Termux is on this phone. Needs the `<queries>` entry in the manifest to say yes. */
+    /** Whether a compatible Termux command service is installed (not merely its package name).
+     * Some Play builds omit RUN_COMMAND entirely; offering a permission prompt there can never work.
+     */
     fun isInstalled(): Boolean = runCatching {
         context.packageManager.getPackageInfo(TermuxPaths.PACKAGE, 0)
-        true
+        context.packageManager.getPermissionInfo(TermuxPaths.PERMISSION, 0)
+        val service = context.packageManager.getServiceInfo(
+            android.content.ComponentName(TermuxPaths.PACKAGE, TermuxPaths.RUN_COMMAND_SERVICE), 0)
+        service.exported && service.permission == TermuxPaths.PERMISSION
     }.getOrDefault(false)
 
     fun hasPermission(): Boolean =
