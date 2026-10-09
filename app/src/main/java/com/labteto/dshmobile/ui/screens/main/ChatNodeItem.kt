@@ -320,16 +320,12 @@ private fun AssistantMessage(node: AssistantMessageNode, context: ChatNodeContex
                 "text" -> MarkdownText(block.text.orEmpty())
                 "reasoning" -> {
                     val expanded = reasoningExpanded[index] ?: false
-                    ThinkingRow(
-                        summary = block.text?.lineSequence()?.firstOrNull()
-                            ?: stringResource(R.string.chat_thinking),
+                    com.labteto.dshmobile.ui.components.ThinkingPanel(
+                        text = block.text.orEmpty(),
                         expanded = expanded,
                         onToggle = { reasoningExpanded[index] = !expanded },
                         streaming = streaming,
                     )
-                    AnimatedVisibility(visible = expanded) {
-                        MarkdownText(block.text.orEmpty())
-                    }
                 }
                 // Show partial arguments until the durable tool card takes over. The list filter
                 // uses this same predicate so a tool-only streaming message can reach this row.

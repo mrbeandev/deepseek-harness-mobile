@@ -572,4 +572,5 @@
     <string name="chat_read_image_unavailable">الصورة لم تعد متاحة</string>
     <string name="chat_tool_group_count">استدعاءات الأدوات: %1$d</string>
     <string name="chat_tool_group_failed">%1$d فشلت</string>
+    <string name="chat_thought_process">عملية التفكير</string>
 </resources>

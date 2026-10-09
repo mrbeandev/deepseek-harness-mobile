@@ -572,4 +572,5 @@
     <string name="chat_read_image_unavailable">تصویر اب دستیاب نہیں ہے</string>
     <string name="chat_tool_group_count">ٹول کالز: %1$d</string>
     <string name="chat_tool_group_failed">%1$d ناکام</string>
+    <string name="chat_thought_process">سوچنے کا عمل</string>
 </resources>

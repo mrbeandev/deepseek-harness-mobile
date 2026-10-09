@@ -574,4 +574,5 @@
     <string name="chat_read_image_unavailable">Image no longer available</string>
     <string name="chat_tool_group_count">Tool calls: %1$d</string>
     <string name="chat_tool_group_failed">%1$d failed</string>
+    <string name="chat_thought_process">Thought process</string>
 </resources>
