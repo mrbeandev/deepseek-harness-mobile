@@ -508,4 +508,5 @@
     <string name="chat_read_image_unavailable">छवि अब उपलब्ध नहीं है</string>
     <string name="chat_tool_group_count">टूल कॉल: %1$d</string>
     <string name="chat_tool_group_failed">%1$d विफल</string>
+    <string name="chat_thought_process">विचार प्रक्रिया</string>
 </resources>

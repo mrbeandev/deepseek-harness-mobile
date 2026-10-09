@@ -508,4 +508,5 @@
     <string name="chat_read_image_unavailable">Изображение больше недоступно</string>
     <string name="chat_tool_group_count">Вызовы: %1$d</string>
     <string name="chat_tool_group_failed">Ошибок: %1$d</string>
+    <string name="chat_thought_process">Ход рассуждений</string>
 </resources>

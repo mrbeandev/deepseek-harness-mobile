@@ -508,4 +508,5 @@
     <string name="chat_read_image_unavailable">Image indisponible</string>
     <string name="chat_tool_group_count">Outils : %1$d</string>
     <string name="chat_tool_group_failed">%1$d échecs</string>
+    <string name="chat_thought_process">Raisonnement</string>
 </resources>

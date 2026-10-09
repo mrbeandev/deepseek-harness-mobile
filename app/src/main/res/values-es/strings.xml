@@ -508,4 +508,5 @@
     <string name="chat_read_image_unavailable">Imagen ya no disponible</string>
     <string name="chat_tool_group_count">Herramientas: %1$d</string>
     <string name="chat_tool_group_failed">%1$d fallidas</string>
+    <string name="chat_thought_process">Proceso de pensamiento</string>
 </resources>
