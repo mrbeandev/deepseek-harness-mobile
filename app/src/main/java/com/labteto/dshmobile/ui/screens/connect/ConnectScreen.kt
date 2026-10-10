@@ -421,7 +421,7 @@ private fun ThisPhoneCard(
     onSignIn: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
-    onPermissionResult: (Boolean) -> Unit,
+    onPermissionResult: (granted: Boolean, stop: Boolean) -> Unit,
     onOpenTermux: () -> Unit,
     onAcknowledge: () -> Unit,
 ) {
@@ -435,11 +435,13 @@ private fun ThisPhoneCard(
     LaunchedEffect(state.loopbackPort) {
         if (portText.toIntOrNull() != state.loopbackPort) portText = state.loopbackPort.toString()
     }
-    var pendingStop by remember { mutableStateOf(false) }
+    // Which button opened the permission dialog. Saveable: the dialog can outlive a rotation, and
+    // a Stop that comes back as a Start would be the opposite of what was tapped.
+    var pendingStop by rememberSaveable { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (pendingStop && granted) onStop() else onPermissionResult(granted)
+        onPermissionResult(granted, pendingStop)
         pendingStop = false
     }
     // A finished start says its piece and steps aside; nothing is waiting on a tap.
@@ -530,7 +532,12 @@ private fun ThisPhoneCard(
                     is LoopbackStatus.Down -> DsButton(
                         text = stringResource(R.string.connect_loopback_start),
                         onClick = {
-                            if (state.termuxPermission) onStart() else permissionLauncher.launch(TermuxPaths.PERMISSION)
+                            if (state.termuxPermission) {
+                                onStart()
+                            } else {
+                                pendingStop = false
+                                permissionLauncher.launch(TermuxPaths.PERMISSION)
+                            }
                         },
                         enabled = !busy,
                         variant = DsButtonVariant.Info,
@@ -540,8 +547,12 @@ private fun ThisPhoneCard(
                     else -> DsButton(
                         text = stringResource(R.string.connect_loopback_stop),
                         onClick = {
-                            if (state.termuxPermission) onStop()
-                            else { pendingStop = true; permissionLauncher.launch(TermuxPaths.PERMISSION) }
+                            if (state.termuxPermission) {
+                                onStop()
+                            } else {
+                                pendingStop = true
+                                permissionLauncher.launch(TermuxPaths.PERMISSION)
+                            }
                         },
                         enabled = !busy,
                         variant = DsButtonVariant.Outline,

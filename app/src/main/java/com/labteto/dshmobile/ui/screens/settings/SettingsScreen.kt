@@ -198,7 +198,9 @@ fun SettingsScreen(onClose: () -> Unit, viewModel: SettingsViewModel = hiltViewM
                     val loopback by viewModel.loopback.collectAsStateWithLifecycle()
                     val loopbackPort by viewModel.loopbackPort.collectAsStateWithLifecycle()
                     val context = LocalContext.current
-                    var pendingStop by remember { mutableStateOf(false) }
+                    // Which button opened the permission dialog; saveable for the same reason as
+                    // on the connect card — it can outlive a rotation.
+                    var pendingStop by rememberSaveable { mutableStateOf(false) }
                     val permissionLauncher = rememberLauncherForActivityResult(
                         ActivityResultContracts.RequestPermission(),
                     ) { granted ->

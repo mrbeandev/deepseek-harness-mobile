@@ -14,8 +14,8 @@ Realme RMX3998, Android device connected via ADB, arm64.
    installation was removed (including its files) and replaced by the official
    GitHub v0.118.3 arm64 APK. APK digest was checked against the release checksum list.
 2. Official GitHub Termux declares the permission and provides the exported service.
-   The app permission was granted through ADB for this test; **the normal in-app
-   permission dialog remains untested**.
+   The app permission was first granted through ADB. The in-app permission dialog was
+   tested later, from Stop after the permission had been revoked (see below).
 3. Native Termux Node 26.4.0 with Python, CMake, Clang and Make could not install the
    current harness: `koffi` fails compiling its `statx` call against Bionic headers.
    Before upgrading bootstrap libraries, Node also hit an OpenSSL symbol mismatch.
@@ -55,11 +55,12 @@ phone workspace `/root/dsh-mobile-test-workspace`. No real user project was used
   `PARTIAL_WAKE_LOCK 'termux:service-wakelock'` held by Termux.
 
 Core tests, mock-harness tests, app unit tests, lintDebug and assembleDebug passed
-on the initial port. Repeat checks will cover subsequent device-discovered fixes.
+on the initial port. App tests, lintDebug and assembleDebug passed again after the
+Stop permission fix.
 
 ## Not yet established
 
-- Long-duration permission/restart cycles beyond the checks described below.
+- Long-duration permission/restart cycles beyond the checks described above.
 - Overnight survival, Doze, vendor process killer behavior, or reboot autostart.
 - Model/tool execution: no model credentials were installed into the phone harness.
 - Release APK installer/download/checksum flow: a debug APK cannot be replaced by

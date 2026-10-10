@@ -570,10 +570,14 @@ class ConnectViewModel @Inject constructor(
 
     fun openTermuxIntent(): Intent? = termux.launchTermuxIntent()
 
-    /** The screen re-checks after the permission dialog, and starts if that is what was tapped. */
-    fun onTermuxPermissionResult(granted: Boolean) {
+    /**
+     * The screen re-checks after the permission dialog, then carries on with the button that
+     * opened it: Stop when [stop], Start otherwise.
+     */
+    fun onTermuxPermissionResult(granted: Boolean, stop: Boolean) {
         _state.update { it.copy(termuxPermission = granted) }
-        if (granted) startHarness()
+        if (!granted) return
+        if (stop) stopHarness() else startHarness()
     }
 
     /** Re-read what only the platform knows, when the screen comes back to the foreground. */
@@ -709,7 +713,7 @@ class ConnectViewModel @Inject constructor(
             // A remembered direct host is probed through its record too: that is where its
             // session cookie lives, and an anonymous probe of a harness this phone is signed in
             // to answers 401 — which used to read as "sign in again" right after signing in.
-            val known = remembered.firstOrNull { it.authority == authority } ?: paired
+            val known = paired ?: remembered.firstOrNull { it.authority == authority }
             // Cheap and decisive: the sweep only ever looks at this phone's own /24, so an address
             // outside it can never be reached from here and can never be found by scanning either.
             // Saying so now beats a four-second timeout that blames the firewall.
